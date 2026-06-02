@@ -1,0 +1,24 @@
+{
+  "name": "@inboxkit-assignment/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@inboxkit-assignment/db": "workspace:*",
+    "@inboxkit-assignment/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@inboxkit-assignment/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

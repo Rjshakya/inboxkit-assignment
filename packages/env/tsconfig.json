@@ -1,0 +1,3 @@
+{
+  "extends": "@inboxkit-assignment/config/tsconfig.base.json"
+}

@@ -1,0 +1,39 @@
+{
+  "name": "inboxkit-assignment",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:push": "turbo -F @inboxkit-assignment/db db:push",
+    "db:studio": "turbo -F @inboxkit-assignment/db db:studio",
+    "db:generate": "turbo -F @inboxkit-assignment/db db:generate",
+    "db:migrate": "turbo -F @inboxkit-assignment/db db:migrate",
+    "db:start": "turbo -F @inboxkit-assignment/db db:start",
+    "db:watch": "turbo -F @inboxkit-assignment/db db:watch",
+    "db:stop": "turbo -F @inboxkit-assignment/db db:stop",
+    "db:down": "turbo -F @inboxkit-assignment/db db:down",
+    "check": "oxlint && oxfmt --write"
+  },
+  "dependencies": {
+    "@inboxkit-assignment/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@inboxkit-assignment/config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxfmt": "^0.46.0",
+    "oxlint": "^1.61.0",
+    "turbo": "^2.8.12",
+    "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@11.1.2"
+}
