@@ -1,26 +1,50 @@
 import type { Grid } from "@inboxkit-assignment/game-types";
 
 import { createRedisClient } from "@/redis/client";
-import { broadcastToSession } from "./ws";
+import { broadcastToSession, subscribeToRedisPubSub } from "./redis-pubsub";
+import { connectedUsers, addSessionIdToConnectedUser } from "./ws";
 
 export const redis = createRedisClient();
 const timers = new Map<string, NodeJS.Timeout>();
 
 export async function joinSession(sessionId: string, userId: string) {
-  const key = `session:${sessionId}:players`;
-  const exists = await redis.exists(key);
+  const isAlreadyJoined = connectedUsers.get(userId)?.sessionId === sessionId;
+  if (isAlreadyJoined) {
+    return;
+  }
 
-  await redis.rpush(key, userId);
+  subscribeToRedisPubSub(sessionId);
+  addSessionIdToConnectedUser(userId, sessionId);
 
-  if (!exists) {
+  const user = connectedUsers.get(userId);
+  const playersListKey = `session:${sessionId}:players`;
+  const playersListExists = await redis.exists(playersListKey);
+
+  await redis.rpush(playersListKey, userId);
+
+  // if playersListExists doesnt exist , thats mean , someone created a session
+  // so we will start turn from the session creator
+  // if list exist then, then things will go turn by turn
+  if (!playersListExists) {
     await redis.set(
       `session:${sessionId}:turnData`,
       JSON.stringify({ currentIndex: 0, lastTurnAt: Date.now() }),
     );
     await redis.set(`${userId}:${sessionId}:turn`, "1", "EX", 15);
     startTimer(sessionId);
-    broadcastToSession(sessionId, JSON.stringify({ type: "turnChanged", userTurn: userId }));
+    broadcastToSession(sessionId, { type: "turnChanged", userTurn: userId });
   }
+
+  broadcastToSession(
+    sessionId,
+    {
+      type: "joined_broadcast",
+      userId: userId,
+      color: user?.color ?? "",
+      username: user?.username ?? "",
+    },
+    userId,
+  );
 }
 
 export async function advanceTurn(sessionId: string) {
@@ -41,7 +65,7 @@ export async function advanceTurn(sessionId: string) {
   );
   await redis.set(`${nextUserId}:${sessionId}:turn`, "1", "EX", 15);
 
-  broadcastToSession(sessionId, JSON.stringify({ type: "turnChanged", userTurn: nextUserId }));
+  broadcastToSession(sessionId, { type: "turnChanged", userTurn: nextUserId });
   startTimer(sessionId);
 }
 

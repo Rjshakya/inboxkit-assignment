@@ -14,9 +14,8 @@ import { cellClaimingWorkflow } from "./game/workflow";
 import { sessionStartWorkflow } from "./game/workflow";
 import {
   addConnectedUser,
+  connectedUsers,
   removeConnectedUser,
-  updateUserSession,
-  broadcastToSession,
   buildScoresWithUsernames,
 } from "./lib/ws";
 import {
@@ -28,6 +27,7 @@ import {
   setGrid,
   redis,
 } from "./lib/session";
+import { broadcastToSession, maybeUnsubscribe } from "./lib/redis-pubsub";
 import { settings } from "./routes/settings";
 import type { AppUser, AppVariables } from "./types";
 import type { ClientMessage, ServerMessage } from "@inboxkit-assignment/game-types";
@@ -131,7 +131,6 @@ const app = new Hono<{
             if (payload.type === "joinSession") {
               const { sessionId } = payload.data;
               await joinSession(sessionId, userId);
-              updateUserSession(userId, sessionId);
               ws.send(JSON.stringify({ type: "joined", success: true } as ServerMessage));
               return;
             }
@@ -168,25 +167,22 @@ const app = new Hono<{
                 return;
               }
 
-              broadcastToSession(
-                sessionId,
-                JSON.stringify({
-                  type: "cellClaimed",
-                  row: output.row,
-                  col: output.col,
-                  userId: output.userId,
-                  userColor: output.userColor,
-                  grid: output.grid,
-                } as ServerMessage),
-              );
+              broadcastToSession(sessionId, {
+                type: "cellClaimed",
+                row: output.row,
+                col: output.col,
+                userId: output.userId,
+                userColor: output.userColor ?? "",
+                grid: output.grid,
+              });
 
               await incrementScore(sessionId, userId);
               const rawScores = await getSessionScores(sessionId);
               const enrichedScores = buildScoresWithUsernames(rawScores);
-              broadcastToSession(
-                sessionId,
-                JSON.stringify({ type: "scoresData", scores: enrichedScores } as ServerMessage),
-              );
+              broadcastToSession(sessionId, {
+                type: "scoresData",
+                scores: enrichedScores,
+              });
               return;
             }
 
@@ -230,7 +226,15 @@ const app = new Hono<{
           }
         },
         onClose: () => {
-          removeConnectedUser(userId);
+          const { user } = removeConnectedUser(userId);
+          if (user?.sessionId) {
+            const hasOthersInSession = Array.from(connectedUsers.values()).some(
+              (u) => u.sessionId === user.sessionId,
+            );
+            if (!hasOthersInSession) {
+              maybeUnsubscribe(user.sessionId);
+            }
+          }
         },
         onError(evt) {
           console.error("error", evt);

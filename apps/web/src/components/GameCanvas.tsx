@@ -15,7 +15,8 @@ interface GameCanvasProps {
 export default function GameCanvas({ sessionId }: GameCanvasProps) {
   const { data } = authClient.useSession();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { grid, userColor, connected, currentTurnUser, scores, claimCell } = useGameSocket(sessionId);
+  const { grid, userColor, connected, currentTurnUser, scores, claimCell } =
+    useGameSocket(sessionId);
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
 
   useEffect(() => {
@@ -128,31 +129,31 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div
-        className={` px-4 py-2 rounded-lg text-sm font-medium ${
-          currentTurnUser === data?.user?.id
-            ? "bg-green-600 text-white"
-            : "bg-neutral-800 text-neutral-300"
-        }`}
-      >
-        {currentTurnUser === data?.user?.id
-          ? "Your turn! (15 seconds)"
-          : `Waiting for opponent...${currentTurnUser ? ` (${currentTurnUser.slice(0, 8)}...)` : ""}`}
-      </div>
-
-      {scores.length > 0 && (
-        <div className="bg-neutral-900 rounded-lg p-3 text-sm min-w-[200px]">
-          <h3 className="font-semibold text-white mb-2">Scores</h3>
-          {scores.map((s, i) => (
-            <div key={s.userId} className="flex justify-between py-1 text-neutral-300">
-              <span>
-                {i + 1}. {s.username}
-              </span>
-              <span className="font-mono">{s.score}</span>
-            </div>
-          ))}
+      <div className="w-full flex items-start justify-between gap-2">
+        <div
+          className={` px-4 py-2 rounded-lg text-sm font-medium ${
+            currentTurnUser === data?.user?.id
+              ? "bg-green-600 text-white"
+              : "bg-neutral-800 text-neutral-300"
+          }`}
+        >
+          {currentTurnUser === data?.user?.id ? "Your turn! (15 seconds)" : `Wait`}
         </div>
-      )}
+
+        {scores.length > 0 && (
+          <div className="bg-neutral-900 rounded-lg p-3 text-sm min-w-[200px]">
+            <h3 className="font-semibold text-white mb-2">Scores</h3>
+            {scores.map((s, i) => (
+              <div key={s.userId} className="flex justify-between py-1 text-neutral-300">
+                <span>
+                  {i + 1}. {s.username}
+                </span>
+                <span className="font-mono">{s.score}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <canvas
         ref={canvasRef}

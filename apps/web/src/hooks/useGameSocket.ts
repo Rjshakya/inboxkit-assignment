@@ -50,6 +50,8 @@ export function useGameSocket(sessionId: string | null) {
             data: { sessionId },
           } as ClientMessage),
         );
+      } else if (msg.type === "joined_broadcast") {
+        toast.success(`${msg.username} joined session`);
       } else if (msg.type === "gridData") {
         setGrid(msg.grid ?? createEmptyGrid());
       } else if (msg.type === "cellClaimed") {

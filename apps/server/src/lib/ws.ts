@@ -17,32 +17,16 @@ export const addConnectedUser = (user: ConnectedUser) => {
 };
 
 export const removeConnectedUser = (userId: string) => {
+  const user = connectedUsers.get(userId);
   const deleted = connectedUsers.delete(userId);
-  return { connectedUsers, deleted };
+  return { connectedUsers, deleted, user };
 };
 
-export const updateUserSession = (userId: string, sessionId: string) => {
+export const addSessionIdToConnectedUser = (userId: string, sessionId: string) => {
   const user = connectedUsers.get(userId);
   if (user) {
     user.sessionId = sessionId;
   }
-};
-
-export const broadcastToSession = <T extends string>(sessionId: string, msg: T) => {
-  connectedUsers.forEach((user) => {
-    if (user.sessionId === sessionId) {
-      user.ws.send(msg);
-    }
-  });
-};
-
-export const broadcast = <T extends string>(msg: T, except?: { userId: string }) => {
-  connectedUsers.forEach((user, userId) => {
-    if (except && except?.userId === userId) {
-      return;
-    }
-    user.ws.send(msg);
-  });
 };
 
 export const buildScoresWithUsernames = (
