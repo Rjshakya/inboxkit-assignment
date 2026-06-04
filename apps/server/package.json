@@ -2,6 +2,15 @@
   "name": "server",
   "type": "module",
   "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./hc": {
+      "default": "./src/hc.ts",
+      "types": "./src/hc.ts"
+    }
+  },
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc -b",
@@ -10,18 +19,24 @@
     "start": "node dist/index.mjs"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.4",
+    "@hono/node-server": "^2.0.4",
+    "@hono/zod-validator": "^0.8.0",
     "@inboxkit-assignment/auth": "workspace:*",
     "@inboxkit-assignment/db": "workspace:*",
     "@inboxkit-assignment/env": "workspace:*",
+    "@inboxkit-assignment/game-types": "workspace:*",
     "better-auth": "catalog:",
+    "better-result": "^2.9.2",
     "dotenv": "catalog:",
-    "hono": "^4.8.2",
+    "hono": "^4.12.23",
+    "ioredis": "^5.11.0",
+    "ws": "^8.18.2",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@inboxkit-assignment/config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
     "tsdown": "^0.21.9",
     "tsx": "^4.19.2",
     "typescript": "catalog:"

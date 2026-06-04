@@ -1,2 +1,3 @@
 export * from "./auth";
-export {};
+export * from "./settings";
+export * from "./game";

@@ -23,6 +23,7 @@
     "@inboxkit-assignment/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
     "pg": "^8.17.1",
     "zod": "catalog:"
   },

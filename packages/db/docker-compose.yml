@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "6891:5432"
     volumes:
       - inboxkit-assignment_postgres_data:/var/lib/postgresql
     healthcheck:
@@ -17,6 +17,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+  
+  redis:
+    image: redis:7-alpine
+    container_name: inboxkit-assignment-redis
+    ports:
+      - "6379:6379"
     restart: unless-stopped
 
 volumes:

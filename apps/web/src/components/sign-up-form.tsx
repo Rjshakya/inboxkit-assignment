@@ -6,7 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { authClient, signInWithGoogle } from "@/lib/auth-client";
 
 import Loader from "./loader";
 
@@ -144,6 +144,12 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
             </Button>
           )}
         </form.Subscribe>
+
+        <div className="w-full">
+          <Button role="button" onClick={signInWithGoogle} className={"w-full"}>
+            Sigin with Google
+          </Button>
+        </div>
       </form>
 
       <div className="mt-4 text-center">

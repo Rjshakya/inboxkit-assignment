@@ -1,10 +1,13 @@
 import { Toaster } from "@inboxkit-assignment/ui/components/sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import Header from "../components/header";
 
 import appCss from "../index.css?url";
+
+const queryClient = new QueryClient();
 
 export interface RouterAppContext {}
 
@@ -40,13 +43,15 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <div className="grid h-svh grid-rows-[auto_1fr]">
-          <Header />
-          <Outlet />
-        </div>
-        <Toaster richColors />
-        <TanStackRouterDevtools position="bottom-left" />
-        <Scripts />
+        <QueryClientProvider client={queryClient}>
+          <div className="grid h-svh grid-rows-[auto_1fr]">
+            <Header />
+            <Outlet />
+          </div>
+          <Toaster richColors />
+          <TanStackRouterDevtools position="bottom-left" />
+          <Scripts />
+        </QueryClientProvider>
       </body>
     </html>
   );

@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@inboxkit-assignment/env": "workspace:*",
+    "@inboxkit-assignment/game-types": "workspace:*",
     "@inboxkit-assignment/ui": "workspace:*",
+    "server": "workspace:*",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.99.0",

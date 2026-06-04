@@ -1,0 +1,18 @@
+{
+  "name": "@inboxkit-assignment/game-types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@inboxkit-assignment/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
