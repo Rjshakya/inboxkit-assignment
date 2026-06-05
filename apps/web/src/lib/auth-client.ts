@@ -8,4 +8,5 @@ export const authClient = createAuthClient({
 export const signInWithGoogle = () =>
   authClient.signIn.social({
     provider: "google",
+    callbackURL: env.VITE_HOST_URL + "/game",
   });
