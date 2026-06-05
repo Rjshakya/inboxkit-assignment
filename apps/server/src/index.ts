@@ -249,7 +249,7 @@ const wss = new WebSocketServer({ noServer: true });
 serve(
   {
     fetch: app.fetch,
-    port: 3000,
+    port: env.PORT,
     websocket: { server: wss },
   },
   (info) => {

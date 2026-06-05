@@ -11,29 +11,19 @@ import {
 } from "@inboxkit-assignment/ui/components/card";
 import { Input } from "@inboxkit-assignment/ui/components/input";
 import { Label } from "@inboxkit-assignment/ui/components/label";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { getUser } from "@/functions/get-user";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/use-settings";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/$userId/settings")({
   component: RouteComponent,
-  beforeLoad: async () => {
-    const session = await getUser();
-    return { session };
-  },
-  loader: async ({ context }) => {
-    if (!context.session) {
-      throw redirect({
-        to: "/login",
-      });
-    }
-  },
 });
 
 function RouteComponent() {
-  const { session } = Route.useRouteContext();
+  const session = useSession();
+
   const { data: settings, isLoading } = useUserSettings();
   const updateMutation = useUpdateUserSettings();
 

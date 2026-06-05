@@ -1,30 +1,20 @@
 import { Button } from "@inboxkit-assignment/ui/components/button";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import GameCanvas from "@/components/GameCanvas";
-import { getUser } from "@/functions/get-user";
+import { useSession } from "@/hooks/use-session";
 import { createGameSession } from "@/lib/game";
 
 export const Route = createFileRoute("/game")({
   component: GamePage,
   validateSearch: z.object({ sessionId: z.string().optional() }),
-  beforeLoad: async () => {
-    const session = await getUser();
-    return { session };
-  },
-  loader: async ({ context }) => {
-    if (!context.session) {
-      throw redirect({
-        to: "/login",
-      });
-    }
-  },
 });
 
 function GamePage() {
+  useSession();
   const { sessionId } = Route.useSearch();
   const navigate = useNavigate({ from: "/game" });
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
+    PORT: z.coerce.number().default(3000),
     GOOGLE_AUTH_CLIENT_ID: z.string().min(1),
     GOOGLE_AUTH_CLIENT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().min(1),

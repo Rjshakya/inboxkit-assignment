@@ -4,9 +4,7 @@ import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanst
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import Header from "../components/header";
-
 import appCss from "../index.css?url";
-
 const queryClient = new QueryClient();
 
 export interface RouterAppContext {}
@@ -22,7 +20,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "My App",
+        title: "inboxkit-assignment",
       },
     ],
     links: [

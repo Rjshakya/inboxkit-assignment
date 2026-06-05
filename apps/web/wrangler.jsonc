@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inboxkit-assignment",
+  // Set this to today's date
+  "compatibility_date": "2026-06-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": {
+    "enabled": true,
+  },
+  "routes": [
+    {
+      "zone_name": "rajshakya.xyz",
+      "custom_domain": true,
+      "pattern": "inboxkit.rajshakya.xyz",
+    },
+  ],
+}
