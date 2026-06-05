@@ -18,7 +18,7 @@ Grid Lock is a full-stack application demonstrating real-time multiplayer game s
 
 ## Demo
 
-<video src="https://raw.githubusercontent.com/Rjshakya/inboxkit-assignment/main/assets/demo.mp4" controls width="100%"></video>
+[Watch the demo video](https://raw.githubusercontent.com/Rjshakya/inboxkit-assignment/main/assets/demo.mp4)
 
 ## Tech Stack
 
