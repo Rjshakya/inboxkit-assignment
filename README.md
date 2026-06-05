@@ -2,8 +2,6 @@
 
 A real-time, turn-based multiplayer grid-claiming game built with a modern TypeScript stack. Players join game sessions, take turns claiming cells on a shared 20x20 grid, and compete for the highest score — all synchronized live via WebSockets.
 
-> This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript monorepo starter.
-
 ## Overview
 
 Grid Lock is a full-stack application demonstrating real-time multiplayer game state management using **WebSockets**, **Redis** (for ephemeral game state and pub/sub broadcasting), and a **PostgreSQL** database (for persistent user data, authentication, and session records). It uses a monorepo architecture powered by **Turborepo** and **pnpm workspaces**.
@@ -23,6 +21,7 @@ Grid Lock is a full-stack application demonstrating real-time multiplayer game s
 ## Tech Stack
 
 ### Frontend (`apps/web`)
+
 - **React 19** + **TypeScript**
 - **TanStack Start** — SSR/meta-framework with file-based routing
 - **TanStack Router** — Type-safe, file-based routing
@@ -34,30 +33,35 @@ Grid Lock is a full-stack application demonstrating real-time multiplayer game s
 - **Cloudflare** — Deployment target (`wrangler` + `@cloudflare/vite-plugin`)
 
 ### Backend (`apps/server`)
+
 - **Hono** — Lightweight, fast web framework
 - **@hono/node-server** — Node.js server with native WebSocket support
 - **WebSocketServer (`ws`)** — Real-time bidirectional communication
 - **Zod** + **@hono/zod-validator** — Runtime request validation
 
 ### Database & State (`packages/db`)
+
 - **PostgreSQL** — Primary relational database
 - **Drizzle ORM** — Type-safe SQL-like query builder
 - **Drizzle-Zod** — Schema-derived Zod validators
 - **Redis (ioredis)** — Ephemeral game state (grid, scores, turns, player lists) and pub/sub broadcasting
 
 ### Authentication (`packages/auth`)
+
 - **Better-Auth** — Authentication framework with Drizzle adapter
 - Email & password login
 - Google OAuth 2.0 social login
 - Cookie-based sessions (`sameSite: none`, `secure`, `httpOnly`)
 
 ### Shared Packages
+
 - **`packages/ui`** — Shared shadcn/ui components, Tailwind theme tokens, and global styles
 - **`packages/game-types`** — Shared TypeScript types for WebSocket message contracts
 - **`packages/env`** — T3-style environment variable validation (Zod) split by `server` and `web`
 - **`packages/config`** — Shared TypeScript base configuration
 
 ### Tooling
+
 - **Turborepo** — Monorepo task orchestration
 - **pnpm** — Package manager (v11.1.2)
 - **Oxlint + Oxfmt** — Linting and formatting
@@ -98,6 +102,7 @@ inboxkit-assignment/
 The server uses **Hono's `upgradeWebSocket`** combined with a raw **`ws` WebSocketServer** to handle persistent connections. Each authenticated user gets a WebSocket connection identified by their user ID.
 
 **Key Libraries:**
+
 - `src/lib/ws.ts` — In-memory map of connected users (`connectedUsers`) holding username, color, session, and socket reference.
 - `src/lib/session.ts` — Redis-backed game state manager:
   - `session:{id}:players` — Redis list of joined players.
@@ -128,18 +133,21 @@ The server uses **Hono's `upgradeWebSocket`** combined with a raw **`ws` WebSock
 ### Color Assignment
 
 Players are assigned a color in this priority:
+
 1. **User-defined color** from `user_setting.color` (saved in DB).
 2. **Hashed fallback** (`hashToColor`) derived deterministically from their user ID using a predefined Tailwind palette.
 
 ## Database Schema
 
 ### Auth Tables (Better-Auth)
+
 - `user` — id, name, email, emailVerified, image
 - `session` — id, token, expiresAt, userId, ipAddress, userAgent
 - `account` — OAuth account linkage (provider, tokens, etc.)
 - `verification` — Email verification codes
 
 ### App Tables
+
 - `user_setting` — Per-user preferences (favorite `color`), linked to `user.id`.
 - `game_sessions` — Session metadata (`createdBy`, `isExpired`, timestamps).
 - `game_sessions_results` — Final scores per player per session.
@@ -278,11 +286,13 @@ import { Button } from "@inboxkit-assignment/ui/components/button";
 ### WebSocket Messages
 
 **Client → Server (`ClientMessage`)**
+
 - `joinSession` — Join a game session by ID.
 - `claim` — Attempt to claim a grid cell (row, col).
 - `getTurn` / `getGrid` / `getScores` / `setGrid` — Query or mutate game state.
 
 **Server → Client (`ServerMessage`)**
+
 - `init` — Connection handshake with userId, color, username.
 - `joined` / `joined_broadcast` — Player joined events.
 - `cellClaimed` — A cell was successfully claimed; includes updated grid.
