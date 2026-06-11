@@ -46,11 +46,35 @@ export const gameSessionResultTable = t.pgTable("game_sessions_results", {
     .notNull(),
 });
 
+export const gameSessionPlayersTable = t.pgTable("game_session_players", {
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => randomUUID().toString()),
+  sessionId: t
+    .text()
+    .notNull()
+    .references(() => gameSessionTable.id),
+  userId: t
+    .text()
+    .notNull()
+    .references(() => user.id),
+  joinedAt: t.timestamp("joined_at").defaultNow().notNull(),
+  updatedAt: t
+    .timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export type gameSessionInsert = InferInsertModel<typeof gameSessionTable>;
 export type gameSessionSelect = InferSelectModel<typeof gameSessionTable>;
 
 export type gameSessionResultInsert = InferInsertModel<typeof gameSessionResultTable>;
 export type gameSessionResultSelect = InferSelectModel<typeof gameSessionResultTable>;
+
+export type gameSessionPlayersInsert = InferInsertModel<typeof gameSessionPlayersTable>;
+export type gameSessionPlayersSelect = InferSelectModel<typeof gameSessionPlayersTable>;
 
 export const gameSessionInsertSchema = createInsertSchema(gameSessionTable);
 export const gameSessionSelectSchema = createSelectSchema(gameSessionTable);
@@ -59,3 +83,7 @@ export const gameSessionUpdateSchema = createUpdateSchema(gameSessionTable);
 export const gameSessionResultInsertSchema = createInsertSchema(gameSessionResultTable);
 export const gameSessionResultSelectSchema = createSelectSchema(gameSessionResultTable);
 export const gameSessionResultUpdateSchema = createUpdateSchema(gameSessionResultTable);
+
+export const gameSessionPlayersInsertSchema = createInsertSchema(gameSessionPlayersTable);
+export const gameSessionPlayersSelectSchema = createSelectSchema(gameSessionPlayersTable);
+export const gameSessionPlayersUpdateSchema = createUpdateSchema(gameSessionPlayersTable);

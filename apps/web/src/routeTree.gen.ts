@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as Game_lobbyRouteImport } from './routes/game_lobby'
 import { Route as GameRouteImport } from './routes/game'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +19,11 @@ import { Route as UserIdSettingsRouteImport } from './routes/$userId.settings'
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Game_lobbyRoute = Game_lobbyRouteImport.update({
+  id: '/game_lobby',
+  path: '/game_lobby',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GameRoute = GameRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/game': typeof GameRoute
+  '/game_lobby': typeof Game_lobbyRoute
   '/login': typeof LoginRoute
   '/$userId/settings': typeof UserIdSettingsRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/game': typeof GameRoute
+  '/game_lobby': typeof Game_lobbyRoute
   '/login': typeof LoginRoute
   '/$userId/settings': typeof UserIdSettingsRoute
 }
@@ -60,21 +68,42 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/game': typeof GameRoute
+  '/game_lobby': typeof Game_lobbyRoute
   '/login': typeof LoginRoute
   '/$userId/settings': typeof UserIdSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/game' | '/login' | '/$userId/settings'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/game'
+    | '/game_lobby'
+    | '/login'
+    | '/$userId/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/game' | '/login' | '/$userId/settings'
-  id: '__root__' | '/' | '/dashboard' | '/game' | '/login' | '/$userId/settings'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/game'
+    | '/game_lobby'
+    | '/login'
+    | '/$userId/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/game'
+    | '/game_lobby'
+    | '/login'
+    | '/$userId/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   GameRoute: typeof GameRoute
+  Game_lobbyRoute: typeof Game_lobbyRoute
   LoginRoute: typeof LoginRoute
   UserIdSettingsRoute: typeof UserIdSettingsRoute
 }
@@ -86,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/game_lobby': {
+      id: '/game_lobby'
+      path: '/game_lobby'
+      fullPath: '/game_lobby'
+      preLoaderRoute: typeof Game_lobbyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/game': {
@@ -123,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   GameRoute: GameRoute,
+  Game_lobbyRoute: Game_lobbyRoute,
   LoginRoute: LoginRoute,
   UserIdSettingsRoute: UserIdSettingsRoute,
 }

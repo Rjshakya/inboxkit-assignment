@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toast } from "sonner";
 import { env } from "@inboxkit-assignment/env/web";
-import type { Grid, ClientMessage, ServerMessage } from "@inboxkit-assignment/game-types";
+import type { Grid, Message } from "@inboxkit-assignment/game-types";
 
 const GRID_SIZE = 25;
 
@@ -33,13 +33,13 @@ export function useGameSocket(sessionId: string | null) {
       ws.send(
         JSON.stringify({
           type: "joinSession",
-          data: { sessionId },
-        } as ClientMessage),
+          sessionId,
+        } as Message),
       );
     };
 
     ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data) as ServerMessage;
+      const msg = JSON.parse(event.data) as Message;
 
       if (msg.type === "init") {
         setUserId(msg.userId);
@@ -47,8 +47,8 @@ export function useGameSocket(sessionId: string | null) {
         ws.send(
           JSON.stringify({
             type: "getGrid",
-            data: { sessionId },
-          } as ClientMessage),
+            sessionId,
+          } as Message),
         );
       } else if (msg.type === "joined_broadcast") {
         toast.success(`${msg.username} joined session`);
@@ -84,9 +84,13 @@ export function useGameSocket(sessionId: string | null) {
     (row: number, col: number) => {
       if (!wsRef.current || !sessionId || !grid || !userColor) return;
 
-      const msg: ClientMessage = {
+      const msg: Message = {
         type: "claim",
-        data: { sessionId, grid, userColor, row, col },
+        sessionId,
+        grid,
+        userColor,
+        row,
+        col,
       };
       wsRef.current.send(JSON.stringify(msg));
     },
@@ -95,9 +99,9 @@ export function useGameSocket(sessionId: string | null) {
 
   const getTurn = useCallback(() => {
     if (!wsRef.current || !sessionId) return;
-    const msg: ClientMessage = {
+    const msg: Message = {
       type: "getTurn",
-      data: { sessionId },
+      sessionId,
     };
     wsRef.current.send(JSON.stringify(msg));
   }, [sessionId]);

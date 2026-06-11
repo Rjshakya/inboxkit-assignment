@@ -1,6 +1,7 @@
 import type { WebSocketLike } from "@hono/node-server";
 import type { WSContext } from "hono/ws";
 
+// In memory state
 type ConnectedUser = {
   userId: string;
   username: string;
@@ -27,17 +28,4 @@ export const addSessionIdToConnectedUser = (userId: string, sessionId: string) =
   if (user) {
     user.sessionId = sessionId;
   }
-};
-
-export const buildScoresWithUsernames = (
-  rawScores: { userId: string; score: number }[],
-): { userId: string; username: string; score: number }[] => {
-  return rawScores.map((s) => {
-    const user = connectedUsers.get(s.userId);
-    return {
-      userId: s.userId,
-      username: user?.username ?? s.userId.slice(0, 8),
-      score: s.score,
-    };
-  });
 };
