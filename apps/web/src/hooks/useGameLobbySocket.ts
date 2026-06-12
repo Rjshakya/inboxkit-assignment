@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { env } from "@inboxkit-assignment/env/web";
 import type { Message } from "@inboxkit-assignment/game-types";
@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 const WS_URL = env.VITE_SERVER_URL.replace(/^http/, "ws");
 
 export function useGameLobbySocket(sessionId: string) {
+  const navigate = useNavigate();
   const [connected, setConnected] = useState(false);
   const [players, setPlayers] = useState<{ userId: string; username: string }[]>([]);
   const [isInSession, setIsInSession] = useState<boolean | null>(null);
@@ -19,7 +20,7 @@ export function useGameLobbySocket(sessionId: string) {
   useEffect(() => {
     if (!sessionId) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws`);
+    const ws = new WebSocket(`${WS_URL}/ws?sessionId=${sessionId}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -58,7 +59,9 @@ export function useGameLobbySocket(sessionId: string) {
         case "session_joined": {
           toast.success(msg.msg);
           setPlayers(msg.players);
-          setIsInSession(msg.user?.userId === currentUserId);
+          if (!isInSession && msg.user.userId === currentUserId) {
+            setIsInSession(true);
+          }
           break;
         }
 
@@ -98,9 +101,14 @@ export function useGameLobbySocket(sessionId: string) {
           toast.error("Your request to join was declined");
           break;
         }
+        case "game_started": {
+          navigate({ to: "/$sessionId", params: { sessionId: msg.sessionId } });
+          break;
+        }
         case "player_left":
         case "player_removed_from_session": {
           setPlayers((prev) => prev.filter((p) => p.userId !== msg.userId));
+          setIsInSession(msg.userId !== currentUserId);
           break;
         }
 
@@ -126,7 +134,7 @@ export function useGameLobbySocket(sessionId: string) {
     return () => {
       ws.close();
     };
-  }, [sessionId, currentUserId]);
+  }, [sessionId, currentUserId, navigate]);
 
   const requestToJoin = useCallback(() => {
     if (!wsRef.current || !sessionId) return;
@@ -138,10 +146,25 @@ export function useGameLobbySocket(sessionId: string) {
     );
   }, [sessionId]);
 
+  const removePlayerFromSession = useCallback(
+    (userId: string) => {
+      if (!wsRef.current || !sessionId) return;
+      wsRef.current.send(
+        JSON.stringify({
+          type: "remove_player_from_session",
+          sessionId,
+          userId,
+        } as Message),
+      );
+    },
+    [sessionId],
+  );
+
   return {
     connected,
     players,
     isInSession,
     requestToJoin,
+    removePlayerFromSession,
   };
 }

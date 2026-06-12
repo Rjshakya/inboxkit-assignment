@@ -44,6 +44,8 @@ import {
 import type { Message } from "@inboxkit-assignment/game-types";
 import type Redis from "ioredis";
 
+export const TURN_DURATION_MS = 15 * 1000;
+
 export class RedisError extends TaggedError("RedisError")<{
   message: string;
   operation: string;
@@ -56,6 +58,7 @@ export class SessionError extends TaggedError("SessionError")<{
     | "NotEnoughPlayers"
     | "AlreadyStarted"
     | "AlreadyStartedByOther"
+    | "PlayerAlreadyExist"
     | "NoActivePlayer"
     | "PlayerNotInSession"
     | "SessionFull";
@@ -65,6 +68,15 @@ export class SessionError extends TaggedError("SessionError")<{
 export class DBError extends TaggedError("DBError")<{
   message: string;
   operation: string;
+}>() {}
+
+export class UnauthorizedError extends TaggedError("UnauthorizedError")<{
+  message: string;
+}>() {}
+
+export class RemovePlayerFromSessionErrors extends TaggedError("UnauthorizedError")<{
+  reason: "ONLY ADMIN CAN REMOVE";
+  message: string;
 }>() {}
 
 export type CreateSessionWorkflowDeps = {
@@ -83,6 +95,7 @@ export type CreateSessionWorkflowInput = {
 export const addPlayerInSession =
   (deps: { db: NodePgDatabase<any>; redis: Redis }) => (values: gameSessionPlayersInsert) => {
     return Result.gen(async function* () {
+      // can be a race condition
       const count = yield* Result.await(
         Result.tryPromise({
           try: () => deps.redis.llen(RedisSessionPlayersKey(values.sessionId)),
@@ -101,10 +114,35 @@ export const addPlayerInSession =
         });
       }
 
+      const isExist = yield* Result.await(
+        Result.tryPromise({
+          try: async () => {
+            const result = await deps.redis.lpos(
+              RedisSessionPlayersKey(values.sessionId),
+              values.userId,
+            );
+
+            return result === null ? false : true;
+          },
+          catch(cause) {
+            return new RedisError({
+              message: String(cause),
+              operation: "LPOS",
+            });
+          },
+        }),
+      );
+
+      if (isExist) {
+        console.log("player alreay exist");
+        return Result.ok(true);
+      }
+
       yield* Result.await(
         Result.tryPromise({
           try: async () => {
-            await deps.redis
+            console.log("Inserting player in redis list");
+            return await deps.redis
               .multi()
               .rpush(RedisSessionPlayersKey(values.sessionId), values.userId)
               .ltrim(RedisSessionPlayersKey(values.sessionId), -50, -1)
@@ -129,7 +167,7 @@ export const addPlayerInSession =
         }),
       );
 
-      return Result.ok(result);
+      return Result.ok(result[0]?.userId === values.userId);
     });
   };
 
@@ -155,7 +193,7 @@ export const createSessionWorkflow =
         });
       }
 
-      const data = yield* Result.await(
+      yield* Result.await(
         addPlayerInSession({ db: deps.db, redis: deps.redis })({
           sessionId: session[0].id,
           userId: input.userId,
@@ -163,7 +201,7 @@ export const createSessionWorkflow =
       );
 
       return Result.ok({
-        sessionId: data[0]?.id as string,
+        sessionId: session[0].id,
         userId: input.userId,
       });
     });
@@ -251,28 +289,21 @@ export const acceptRequestToJoinSession =
         });
       }
 
-      const sessionPlayers = yield* Result.await(
+      yield* Result.await(
         addPlayerInSession({ db: deps.db, redis: deps.redis })({
           sessionId,
           userId: forUser.userId,
         }),
       );
 
-      if (!sessionPlayers[0]?.id) {
-        return yield* new SessionError({
-          reason: "NotFound",
-          message: "Failed to accept request to join session " + input.sessionId,
-        });
-      }
-
+      const playersIds = yield* Result.await(getSessionPlayers(deps.redis)(sessionId));
       const players = yield* Result.await(
         Result.tryPromise({
           try: async () => {
-            const playersId = sessionPlayers.map((sp) => sp.id);
             const res = await deps.db
               .select({ id: user.id, email: user.email })
               .from(user)
-              .where(inArray(user.id, playersId))
+              .where(inArray(user.id, playersIds))
               .limit(50);
 
             return res.map((user) => {
@@ -323,6 +354,7 @@ export const getSessionPlayersDetails = (deps: getSessionDeps) => (sessionId: st
         .leftJoin(user, eq(gameSessionPlayersTable.userId, user.id))
         .where(eq(gameSessionPlayersTable.sessionId, sessionId))
         .orderBy(asc(gameSessionPlayersTable.joinedAt))
+        .limit(50)
         .then((players) => {
           return players.map((p) => {
             return {
@@ -343,10 +375,10 @@ export const isPlayerExistInSession =
   (deps: { redis: Redis }) => (input: { userId: string; sessionId: string }) => {
     const { userId, sessionId } = input;
     return Result.gen(async function* () {
-      const players = yield* Result.await(
+      const isExist = yield* Result.await(
         Result.tryPromise({
           try: () => {
-            return deps.redis.lrange(RedisSessionPlayersKey(sessionId), 0, -1);
+            return deps.redis.lpos(RedisSessionPlayersKey(sessionId), userId);
           },
           catch: (cause) =>
             new RedisError({
@@ -356,7 +388,7 @@ export const isPlayerExistInSession =
         }),
       );
 
-      return Result.ok(players.includes(userId));
+      return Result.ok(isExist === null ? false : true);
     });
   };
 
@@ -365,6 +397,7 @@ export const RedisSessionStartedByKey = (sessionId: string) => `session:startedB
 export const RedisSessionActivePlayerKey = (sessionId: string) =>
   `session:active_player:${sessionId}`;
 export const RedisSessionPlayersKey = (sessionId: string) => `session:${sessionId}:players`;
+export const RedisSessionTurnLockKey = (sessionId: string) => `session:${sessionId}:turn_lock`;
 
 export type SessionActivePlayer = {
   userId: string;
@@ -452,7 +485,7 @@ export const startSessionWorkflow =
 
       const activePlayer: SessionActivePlayer = {
         userId: startedBy,
-        expiry: Date.now() + 16 * 1000,
+        expiry: Date.now() + TURN_DURATION_MS,
       };
 
       yield* Result.await(
@@ -511,7 +544,7 @@ export const changeActivePlayer = (redis: Redis) => (sessionId: string) => {
 
     const nextActivePlayer: SessionActivePlayer = {
       userId: nextUserId,
-      expiry: Date.now() + 16 * 1000,
+      expiry: Date.now() + TURN_DURATION_MS,
     };
 
     yield* Result.await(
@@ -577,11 +610,45 @@ export const handleActivePlayerExpired =
 
       const now = Date.now();
       if (now > activePlayer.expiry) {
-        const nextActivePlayer = yield* Result.await(changeActivePlayer(deps.redis)(sessionId));
-        return Result.ok(nextActivePlayer);
+        const lockAcquired = yield* Result.await(
+          Result.tryPromise({
+            try: () => deps.redis.set(RedisSessionTurnLockKey(sessionId), "1", "PX", 2000, "NX"),
+            catch: (cause) =>
+              new RedisError({
+                message: String(cause),
+                operation: "SET_TURN_LOCK",
+              }),
+          }),
+        );
+
+        if (lockAcquired === "OK") {
+          const nextActivePlayer = yield* Result.await(changeActivePlayer(deps.redis)(sessionId));
+          yield* Result.await(
+            Result.tryPromise({
+              try: () => deps.redis.del(RedisSessionTurnLockKey(sessionId)).then(() => true),
+              catch: (cause) =>
+                new RedisError({
+                  message: String(cause),
+                  operation: "DEL_TURN_LOCK",
+                }),
+            }),
+          );
+          return Result.ok({ activePlayer: nextActivePlayer, changed: true });
+        }
+
+        const latestActivePlayer = yield* Result.await(
+          getSessionActivePlayer(deps.redis)(sessionId),
+        );
+        if (!latestActivePlayer) {
+          return yield* new SessionError({
+            reason: "NoActivePlayer",
+            message: "No active player found",
+          });
+        }
+        return Result.ok({ activePlayer: latestActivePlayer, changed: false });
       }
 
-      return Result.ok(activePlayer);
+      return Result.ok({ activePlayer, changed: false });
     });
   };
 
@@ -617,3 +684,86 @@ export const leaveSession = (redis: Redis) => (input: { sessionId: string; userI
     return Result.ok(activePlayer);
   });
 };
+
+export type RemovePlayerFromSessionDeps = {
+  db: NodePgDatabase<any>;
+  redis: Redis;
+};
+
+export type RemovePlayerFromSessionInput = {
+  byUserId: string;
+  userId: string;
+  sessionId: string;
+};
+
+export const removePlayerFromSession =
+  (deps: RemovePlayerFromSessionDeps) => (input: RemovePlayerFromSessionInput) => {
+    const { db, redis } = deps;
+    const { byUserId, userId, sessionId } = input;
+
+    return Result.gen(async function* () {
+      const isAdmin = yield* Result.await(
+        Result.tryPromise({
+          try: async () => {
+            const result = await db
+              .select({ id: gameSessionTable.id })
+              .from(gameSessionTable)
+              .where(
+                and(eq(gameSessionTable.createdBy, byUserId), eq(gameSessionTable.id, sessionId)),
+              )
+              .limit(1);
+
+            return !!result[0]?.id;
+          },
+          catch(cause) {
+            return new DBError({
+              message: String(cause),
+              operation: "Select game session table",
+            });
+          },
+        }),
+      );
+
+      if (!isAdmin) {
+        return yield* new RemovePlayerFromSessionErrors({
+          message: "Only admin can remove players",
+          reason: "ONLY ADMIN CAN REMOVE",
+        });
+      }
+
+      const isPlayerInSession = yield* Result.await(
+        isPlayerExistInSession({ redis })({ userId, sessionId }),
+      );
+
+      if (!isPlayerInSession) {
+        return Result.ok(true);
+      }
+
+      yield* Result.await(
+        Result.tryPromise({
+          try: () => {
+            return db.transaction(async (tx) => {
+              await tx
+                .delete(gameSessionPlayersTable)
+                .where(
+                  and(
+                    eq(gameSessionPlayersTable.sessionId, sessionId),
+                    eq(gameSessionPlayersTable.userId, userId),
+                  ),
+                );
+
+              await redis.lrem(RedisSessionPlayersKey(sessionId), 1, userId);
+            });
+          },
+          catch(cause) {
+            return new DBError({
+              operation: "TRANSACTION",
+              message: String(cause),
+            });
+          },
+        }),
+      );
+
+      return Result.ok(true);
+    });
+  };

@@ -16,7 +16,8 @@ export const getGameSession = async (sessionId: string) => {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to get session");
+    const error = await res.json();
+    throw error;
   }
 
   return res.json();

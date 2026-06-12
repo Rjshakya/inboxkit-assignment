@@ -4,18 +4,33 @@ export type Grid = GridCell[][];
 
 export type ScoreEntry = { userId: string; username: string; score: number };
 
+export type SessionPlayer = {
+  userId: string;
+  username: string;
+  color?: string;
+};
+
+export type ActivePlayer = {
+  userId: string;
+  expiry: number;
+};
+
+export type GameState = {
+  sessionId: string;
+  grid: Grid;
+  activePlayer: ActivePlayer | null;
+  scores: ScoreEntry[];
+  players: SessionPlayer[];
+  status: "waiting" | "active" | "finished";
+  winnerUserId: string | null;
+};
+
 /**
  * Unified message protocol for client-server communication.
- * Direction is implicit by context (who sends vs who receives).
+ * Direction is implicit by context.
  */
 export type Message =
-  // Client → Server
-  | { type: "joinSession"; sessionId: string }
-  | { type: "claim"; sessionId: string; grid: Grid; userColor: string; row: number; col: number }
-  | { type: "getTurn"; sessionId: string }
-  | { type: "getGrid"; sessionId: string }
-  | { type: "setGrid"; sessionId: string; grid: Grid }
-  | { type: "getScores"; sessionId: string }
+  // Client to Server
   | { type: "get_session_players"; sessionId: string }
   | { type: "check_player_exist_in_session"; sessionId: string }
   | { type: "request_to_join_session"; sessionId: string }
@@ -29,24 +44,47 @@ export type Message =
       sessionId: string;
       forUser: { userId: string; username: string };
     }
+  | { type: "remove_player_from_session"; sessionId: string; userId: string }
+  | { type: "get_game_state"; sessionId: string }
+  | { type: "claim_cell"; sessionId: string; row: number; col: number }
+  | { type: "turn_expired"; sessionId: string }
   | { type: "ping" }
 
-  // Server → Client
-  | { type: "init"; userId: string; color: string; username: string }
-  | { type: "joined"; success: boolean }
-  | { type: "joined_broadcast"; userId: string; color: string; username: string }
-  | { type: "cellClaimed"; row: number; col: number; userId: string; userColor: string; grid: Grid }
-  | { type: "turnChanged"; userTurn: string }
-  | { type: "turnData"; userTurn: string | null; isMyTurn: boolean }
-  | { type: "gridData"; grid: Grid | null }
-  | { type: "gridSet"; success: boolean }
-  | { type: "scoresData"; scores: ScoreEntry[] }
-  | { type: "session_players"; players: { userId: string; username: string }[] }
+  // Server to Client
+  | { type: "session_players"; players: SessionPlayer[] }
   | { type: "check_player_exist_in_session_result"; result: boolean; userId: string }
-  | { type: "request_declined"; sessionId: string; message: string }
+  | {
+      type: "request_declined";
+      sessionId: string;
+      message: string;
+      user: { userId: string; username: string };
+    }
+  | { type: "game_started"; sessionId: string; activePlayer: ActivePlayer }
+  | { type: "game_state"; state: GameState }
+  | {
+      type: "cell_claimed";
+      sessionId: string;
+      row: number;
+      col: number;
+      userId: string;
+      userColor: string;
+    }
+  | { type: "turn_changed"; sessionId: string; activePlayer: ActivePlayer }
+  | { type: "score_updated"; sessionId: string; scores: ScoreEntry[] }
+  | {
+      type: "claim_rejected";
+      reason: "NotActivePlayer" | "CellAlreadyClaimed" | "NotAdjacent" | "OutOfBounds";
+      message: string;
+    }
+  | {
+      type: "game_over";
+      sessionId: string;
+      scores: ScoreEntry[];
+      winnerUserId: string | null;
+    }
   | { type: "error"; message: string }
 
-  // Bidirectional (server forwards/broadcasts)
+  // Bidirectional broadcasts and direct messages
   | {
       type: "request_to_join_session_dm";
       fromUser: { userId: string; username: string };
@@ -55,12 +93,11 @@ export type Message =
   | {
       type: "session_joined";
       user: { userId: string; username: string };
-      players: { userId: string; username: string }[];
+      players: SessionPlayer[];
       msg: string;
     }
   | { type: "player_left"; userId: string }
-  | { type: "player_removed_from_session"; userId: string }
-  | { type: "activePlayerChanged"; userId: string; expiry: number };
+  | { type: "player_removed_from_session"; userId: string };
 
 export type BroadCastMessage<T> = {
   data: T;

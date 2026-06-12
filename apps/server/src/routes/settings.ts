@@ -2,9 +2,9 @@ import { zValidator } from "@hono/zod-validator";
 import { db, eq } from "@inboxkit-assignment/db";
 import { userSettingsTable } from "@inboxkit-assignment/db/schema/settings";
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 
+import { UnauthorizedError } from "../game/session";
 import type { AppVariables } from "../types";
 
 const updateSchema = z.object({
@@ -15,7 +15,7 @@ export const settings = new Hono<{ Variables: AppVariables }>()
   .get("/", async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const existing = c.get("user_settings");
@@ -28,7 +28,7 @@ export const settings = new Hono<{ Variables: AppVariables }>()
   .post("/", zValidator("json", updateSchema), async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const { color } = c.req.valid("json");

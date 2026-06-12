@@ -1,69 +1,124 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { toast } from "sonner";
+import type { GameState, Grid, Message, ScoreEntry } from "@inboxkit-assignment/game-types";
 import { env } from "@inboxkit-assignment/env/web";
-import type { Grid, Message } from "@inboxkit-assignment/game-types";
+import { toast } from "sonner";
 
-const GRID_SIZE = 25;
+import { authClient } from "@/lib/auth-client";
 
-function createEmptyGrid(): Grid {
-  return Array.from({ length: GRID_SIZE }, () =>
-    Array.from({ length: GRID_SIZE }, () => ({ claimed: false })),
-  );
-}
+const WS_URL = env.VITE_SERVER_URL.replace(/^http/, "ws");
+type ClaimedCell = Extract<Grid[number][number], { claimed: true }>;
 
-export function useGameSocket(sessionId: string | null) {
-  const [grid, setGrid] = useState<Grid | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userColor, setUserColor] = useState<string | null>(null);
-  const [currentTurnUser, setCurrentTurnUser] = useState<string | null>(null);
-  const [scores, setScores] = useState<{ userId: string; username: string; score: number }[]>([]);
-  const [connected, setConnected] = useState(false);
+export function useGameSocket(sessionId: string) {
+  const { data } = authClient.useSession();
   const wsRef = useRef<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [grid, setGrid] = useState<Grid | null>(null);
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [currentTurnUser, setCurrentTurnUser] = useState<string | null>(null);
+  const [turnExpiresAt, setTurnExpiresAt] = useState<number | null>(null);
+  const [userColor, setUserColor] = useState<string | null>(null);
+  const [gameStatus, setGameStatus] = useState<GameState["status"]>("waiting");
+  const [winnerUserId, setWinnerUserId] = useState<string | null>(null);
+  const [timeLeftMs, setTimeLeftMs] = useState(0);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
-    const serverUrl = env.VITE_SERVER_URL.replace(/^http/, "ws");
-    const ws = new WebSocket(`${serverUrl}/ws`);
+    const ws = new WebSocket(`${WS_URL}/ws?sessionId=${sessionId}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
       setConnected(true);
-      ws.send(
-        JSON.stringify({
-          type: "joinSession",
-          sessionId,
-        } as Message),
-      );
+      ws.send(JSON.stringify({ type: "get_game_state", sessionId } satisfies Message));
     };
 
     ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data) as Message;
+      const message = JSON.parse(event.data) as Message;
+      if (!message || !message.type) {
+        return;
+      }
 
-      if (msg.type === "init") {
-        setUserId(msg.userId);
-        setUserColor(msg.color);
-        ws.send(
-          JSON.stringify({
-            type: "getGrid",
-            sessionId,
-          } as Message),
-        );
-      } else if (msg.type === "joined_broadcast") {
-        toast.success(`${msg.username} joined session`);
-      } else if (msg.type === "gridData") {
-        setGrid(msg.grid ?? createEmptyGrid());
-      } else if (msg.type === "cellClaimed") {
-        setGrid(msg.grid);
-      } else if (msg.type === "turnChanged") {
-        setCurrentTurnUser(msg.userTurn);
-      } else if (msg.type === "turnData") {
-        setCurrentTurnUser(msg.userTurn);
-      } else if (msg.type === "scoresData") {
-        setScores(msg.scores);
-      } else if (msg.type === "error") {
-        toast.error(msg.message);
+      switch (message.type) {
+        case "game_state": {
+          setGrid(message.state.grid);
+          setScores(message.state.scores);
+          setCurrentTurnUser(message.state.activePlayer?.userId ?? null);
+          setTurnExpiresAt(message.state.activePlayer?.expiry ?? null);
+          setGameStatus(message.state.status);
+          setWinnerUserId(message.state.winnerUserId);
+          const currentUserId = data?.user?.id;
+          // TODO: server should return user color
+          // rather than computing here
+          if (currentUserId) {
+            const ownedCell = message.state.grid
+              .flat()
+              .find((cell): cell is ClaimedCell => cell.claimed && cell.userId === currentUserId);
+            setUserColor(ownedCell?.userColor ?? null);
+          }
+          break;
+        }
+
+        case "cell_claimed": {
+          setGrid((currentGrid) => {
+            if (!currentGrid) {
+              return currentGrid;
+            }
+
+            const nextGrid = currentGrid.map((row) => [...row]);
+            nextGrid[message.row]![message.col] = {
+              claimed: true,
+              userId: message.userId,
+              userColor: message.userColor,
+            };
+            return nextGrid;
+          });
+
+          break;
+        }
+
+        case "turn_changed":
+        case "game_started": {
+          setCurrentTurnUser(message.activePlayer.userId);
+          setTurnExpiresAt(message.activePlayer.expiry);
+          setGameStatus("active");
+          break;
+        }
+
+        case "score_updated": {
+          setScores(message.scores);
+          break;
+        }
+
+        // TODO: implement game over
+        // when all blocks are over
+        // also very important identify deadlocks ,
+        // when a user cannot claim cell ,because it locked by opponent.
+
+        case "game_over": {
+          setScores(message.scores);
+          setWinnerUserId(message.winnerUserId);
+          setGameStatus("finished");
+          setTurnExpiresAt(null);
+          toast.success("Game over");
+          break;
+        }
+
+        case "claim_rejected": {
+          toast.error(message.message);
+          break;
+        }
+
+        case "error": {
+          toast.error(message.message);
+          break;
+        }
+
+        default: {
+          break;
+        }
       }
     };
 
@@ -77,43 +132,65 @@ export function useGameSocket(sessionId: string | null) {
 
     return () => {
       ws.close();
+      wsRef.current = null;
+      setConnected(false);
+      setGrid(null);
+      setScores([]);
+      setCurrentTurnUser(null);
+      setTurnExpiresAt(null);
+      setGameStatus("waiting");
+      setWinnerUserId(null);
+      setTimeLeftMs(0);
+      setUserColor(null);
     };
-  }, [sessionId]);
+  }, [data?.user?.id, sessionId]);
+
+  useEffect(() => {
+    if (!turnExpiresAt || !wsRef.current || gameStatus !== "active") {
+      setTimeLeftMs(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      const remainingTime = Math.max(0, turnExpiresAt - Date.now());
+      setTimeLeftMs(remainingTime);
+
+      if (remainingTime <= 0) {
+        wsRef.current?.send(JSON.stringify({ type: "turn_expired", sessionId } satisfies Message));
+        window.clearInterval(intervalId);
+      }
+    }, 250);
+
+    setTimeLeftMs(Math.max(0, turnExpiresAt - Date.now()));
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [gameStatus, sessionId, turnExpiresAt]);
 
   const claimCell = useCallback(
     (row: number, col: number) => {
-      if (!wsRef.current || !sessionId || !grid || !userColor) return;
+      if (!wsRef.current || gameStatus !== "active") {
+        return;
+      }
 
-      const msg: Message = {
-        type: "claim",
-        sessionId,
-        grid,
-        userColor,
-        row,
-        col,
-      };
-      wsRef.current.send(JSON.stringify(msg));
+      wsRef.current.send(
+        JSON.stringify({ type: "claim_cell", sessionId, row, col } satisfies Message),
+      );
     },
-    [sessionId, grid, userColor],
+    [gameStatus, sessionId],
   );
 
-  const getTurn = useCallback(() => {
-    if (!wsRef.current || !sessionId) return;
-    const msg: Message = {
-      type: "getTurn",
-      sessionId,
-    };
-    wsRef.current.send(JSON.stringify(msg));
-  }, [sessionId]);
-
   return {
-    grid,
-    userId,
-    userColor,
-    currentTurnUser,
-    scores,
     connected,
+    grid,
+    scores,
+    currentTurnUser,
+    turnExpiresAt,
+    timeLeftMs,
+    userColor,
+    gameStatus,
+    winnerUserId,
     claimCell,
-    getTurn,
   };
 }

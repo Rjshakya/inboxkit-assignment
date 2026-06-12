@@ -2,16 +2,21 @@ import { zValidator } from "@hono/zod-validator";
 import { db, eq } from "@inboxkit-assignment/db";
 import { gameSessionTable } from "@inboxkit-assignment/db/schema/game";
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { Result } from "better-result";
+import type { Message } from "@inboxkit-assignment/game-types";
 
 import { createRedisClient } from "@/redis/client";
 import {
   createSessionWorkflow,
   startSessionWorkflow,
   getSessionPlayersDetails,
+  SessionError,
+  UnauthorizedError,
+  TURN_DURATION_MS,
 } from "@/game/session";
+import { createEmptyGrid, ensureSessionGrid, getSessionScore } from "@/game/logic";
+import { broadcastToSession } from "@/redis/pubsub";
 
 import type { AppVariables } from "@/types";
 
@@ -25,7 +30,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
   .post("/", async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const result = await createSessionWorkflow({ db, redis })({
@@ -33,17 +38,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
     });
 
     if (Result.isError(result)) {
-      const error = result.error;
-      if (error._tag === "SessionError") {
-        throw new HTTPException(422, { message: error.message });
-      }
-      if (error._tag === "DBError") {
-        throw new HTTPException(500, { message: error.message });
-      }
-      if (error._tag === "RedisError") {
-        throw new HTTPException(500, { message: error.message });
-      }
-      throw new HTTPException(500, { message: "Failed to create session" });
+      throw result.error;
     }
 
     const value: string = result.value.sessionId;
@@ -52,7 +47,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
   .get("/:id", zValidator("param", paramsSchema), async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const { id } = c.req.valid("param");
@@ -64,7 +59,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
       .limit(1);
 
     if (!session) {
-      throw new HTTPException(404, { message: "Session not found" });
+      throw new SessionError({ reason: "NotFound", message: "Session not found" });
     }
 
     return c.json({
@@ -78,7 +73,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
   .post("/:id/start", zValidator("param", paramsSchema), async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const { id } = c.req.valid("param");
@@ -89,38 +84,37 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
     });
 
     if (Result.isError(result)) {
-      const error = result.error;
-      if (error._tag === "SessionError") {
-        if (error.reason === "AdminRequired") {
-          throw new HTTPException(409, { message: error.message });
-        }
-
-        if (error.reason === "NotEnoughPlayers") {
-          throw new HTTPException(422, { message: error.message });
-        }
-        if (error.reason === "AlreadyStarted" || error.reason === "AlreadyStartedByOther") {
-          throw new HTTPException(409, { message: error.message });
-        }
-        throw new HTTPException(422, { message: error.message });
-      }
-      if (error._tag === "DBError") {
-        throw new HTTPException(500, { message: error.message });
-      }
-      if (error._tag === "RedisError") {
-        throw new HTTPException(500, { message: error.message });
-      }
-      throw new HTTPException(500, { message: "Failed to start session" });
+      throw result.error;
     }
+
+    const grid = await ensureSessionGrid(redis)(id);
+    if (Result.isError(grid)) {
+      throw grid.error;
+    }
+
+    const scores = await getSessionScore(redis)(id);
+    if (Result.isError(scores)) {
+      throw scores.error;
+    }
+
+    await broadcastToSession(id, {
+      type: "game_started",
+      sessionId: id,
+      activePlayer: result.value.activePlayer,
+    } satisfies Message);
 
     return c.json({
       activePlayer: result.value.activePlayer,
       players: result.value.players,
+      grid: grid.value ?? createEmptyGrid(),
+      scores: scores.value,
+      turnDurationMs: TURN_DURATION_MS,
     });
   })
   .get("/:id/players", zValidator("param", paramsSchema), async (c) => {
     const user = c.get("user");
     if (!user) {
-      throw new HTTPException(401, { message: "Unauthorized" });
+      throw new UnauthorizedError({ message: "Unauthorized" });
     }
 
     const { id } = c.req.valid("param");
@@ -132,17 +126,13 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
       .limit(1);
 
     if (!session) {
-      throw new HTTPException(404, { message: "Session not found" });
+      throw new SessionError({ reason: "NotFound", message: "Session not found" });
     }
 
     const result = await getSessionPlayersDetails({ db })(id);
 
     if (Result.isError(result)) {
-      const error = result.error;
-      if (error._tag === "DBError") {
-        throw new HTTPException(500, { message: error.message });
-      }
-      throw new HTTPException(500, { message: "Failed to get players" });
+      throw result.error;
     }
 
     return c.json({ players: result.value });

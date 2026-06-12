@@ -6,7 +6,6 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import type { Context } from "hono";
 import { WebSocketServer } from "ws";
-import { Result } from "better-result";
 import { db } from "@inboxkit-assignment/db";
 
 import { settings } from "./routes/settings";
@@ -15,27 +14,17 @@ import type { AppVariables } from "./types";
 import { authMiddleware } from "./middlewares/auth";
 import { createRedisClient } from "./redis/client";
 import { hashToColor } from "./game/colors";
+import { addConnectedUser, removeConnectedUser } from "./lib/ws";
 import {
-  addConnectedUser,
-  removeConnectedUser,
-  addSessionIdToConnectedUser,
-} from "./lib/ws";
-import {
-  broadcastToSession,
-  sendMessageToUser,
   BroadcastChannelId,
+  DMChannelId,
   subscribeToPubSub,
   unsubscribeToPubSub,
 } from "./redis/pubsub";
-import {
-  isPlayerExistInSession,
-  sendSessionJoinRequestToAdmin,
-  acceptRequestToJoinSession,
-  leaveSession,
-  getSessionPlayersDetails,
-  RedisSessionPlayersKey,
-} from "./game/session";
+import { DBError, RedisError, SessionError, UnauthorizedError, RemovePlayerFromSessionErrors } from "./game/session";
+import { CellClaimingWorkflowError } from "./game/logic";
 import type { Message } from "@inboxkit-assignment/game-types";
+import { getHandler } from "./handlers";
 
 const redis = createRedisClient();
 
@@ -63,7 +52,8 @@ const app = new Hono<{
     "/ws",
     upgradeWebSocket((c: Context) => {
       const user = c.get("user");
-      if (!user) {
+      const sessionId = c.req.query("sessionId");
+      if (!user || !sessionId) {
         return {
           onOpen: (_event: unknown, ws: any) => {
             ws.close(1008, "Unauthorized");
@@ -78,148 +68,71 @@ const app = new Hono<{
       const userColor = c.get("user_settings")?.color ?? hashToColor(user.id);
 
       return {
-        onOpen: (_event, ws) => {
+        onOpen: async (_event, ws) => {
           addConnectedUser({
             userId,
             username,
             color: userColor,
-            sessionId: null,
+            sessionId,
             ws,
           });
+
+          await subscribeToPubSub(DMChannelId(userId));
+          await subscribeToPubSub(BroadcastChannelId(sessionId));
         },
 
         onMessage: async (event, ws) => {
           try {
-            const payload = JSON.parse(String(event.data)) as Message;
+            const payload = JSON.parse(event.data) as Message;
             if (!payload || !payload.type) return;
 
-            switch (payload.type) {
-              case "get_session_players": {
-                const { sessionId } = payload;
-                addSessionIdToConnectedUser(userId, sessionId);
-                subscribeToPubSub(BroadcastChannelId(sessionId));
+            console.log("<----");
+            console.log(payload);
+            console.log("<----");
+            const handler = getHandler(payload.type);
+            if (!handler) return;
 
-                const result = await getSessionPlayersDetails({ db })(sessionId);
-                if (Result.isOk(result)) {
-                  const players = result.value.map((p) => ({
-                    userId: p.userId ?? "",
-                    username: p.username ?? "",
-                  }));
-                  ws.send(
-                    JSON.stringify({
-                      type: "session_players",
-                      players,
-                    } as Message),
-                  );
-                }
-                break;
-              }
-
-              case "check_player_exist_in_session": {
-                const { sessionId } = payload;
-                const result = await isPlayerExistInSession({ redis })({
-                  userId,
-                  sessionId,
-                });
-                ws.send(
-                  JSON.stringify({
-                    type: "check_player_exist_in_session_result",
-                    result: Result.isOk(result) ? result.value : false,
-                    userId,
-                  } as Message),
-                );
-                break;
-              }
-
-              case "request_to_join_session": {
-                const { sessionId } = payload;
-
-                const isInSession = await isPlayerExistInSession({ redis })({
-                  userId,
-                  sessionId,
-                });
-                if (Result.isOk(isInSession) && isInSession.value) {
-                  ws.send(
-                    JSON.stringify({
-                      type: "error",
-                      message: "Already in session",
-                    } as Message),
-                  );
-                  break;
-                }
-
-                const count = await redis.llen(RedisSessionPlayersKey(sessionId));
-                if (count >= 50) {
-                  ws.send(
-                    JSON.stringify({
-                      type: "error",
-                      message: "Session is full",
-                    } as Message),
-                  );
-                  break;
-                }
-
-                const result = await sendSessionJoinRequestToAdmin({ db })({
-                  sessionId,
-                  userId,
-                  username,
-                });
-
-                if (Result.isOk(result)) {
-                  await sendMessageToUser(result.value.admin, result.value.message);
-                }
-                break;
-              }
-
-              case "accept_request_to_join_session": {
-                const { sessionId, forUser } = payload;
-                const result = await acceptRequestToJoinSession({ db, redis })({
-                  sessionId,
-                  forUser,
-                  byUser: { userId, username },
-                });
-
-                if (Result.isOk(result)) {
-                  await broadcastToSession(sessionId, result.value.message);
-                }
-                break;
-              }
-
-              case "decline_request_to_join_session": {
-                const { sessionId, forUser } = payload;
-                await sendMessageToUser(forUser.userId, {
-                  type: "request_declined",
-                  sessionId,
-                  message: "Your request to join was declined",
-                } as Message);
-                break;
-              }
-
-              default: {
-                break;
-              }
-            }
+            await handler({ userId, username, userColor, ws, redis, db }, payload);
           } catch (e) {
             console.error("WS error:", e);
           }
         },
 
-        onClose: () => {
-          const { user } = removeConnectedUser(userId);
-          if (user?.sessionId) {
-            leaveSession(redis)({ sessionId: user.sessionId, userId });
-            broadcastToSession(user.sessionId, {
-              type: "player_left",
-              userId,
-            } as Message);
-            unsubscribeToPubSub(BroadcastChannelId(user.sessionId));
-          }
+        onClose: async () => {
+          removeConnectedUser(userId);
+          await unsubscribeToPubSub(DMChannelId(userId));
+          await unsubscribeToPubSub(BroadcastChannelId(sessionId));
         },
 
         onError: () => {},
       };
     }),
-  );
+  )
+  .onError((err, c) => {
+    console.error(err);
+
+    if (err instanceof DBError || err instanceof RedisError) {
+      return c.json({ error: "Internal server error", message: "Internal server error" }, 500);
+    }
+
+    if (err instanceof UnauthorizedError) {
+      return c.json({ error: "Unauthorized", message: err.message }, 401);
+    }
+
+    if (err instanceof SessionError) {
+      return c.json({ error: "SESSION_ERROR", message: err.message, reason: err.reason }, 400);
+    }
+
+    if (err instanceof CellClaimingWorkflowError) {
+      return c.json({ error: "GAME_ERROR", message: err.message, reason: err.reason }, 400);
+    }
+
+    if (err instanceof RemovePlayerFromSessionErrors) {
+      return c.json({ error: "REMOVE_PLAYER_ERROR", message: err.message, reason: err.reason }, 400);
+    }
+
+    return c.json({ error: "Internal server error", message: "Internal server error" }, 500);
+  });
 
 const wss = new WebSocketServer({ noServer: true });
 

@@ -15,9 +15,22 @@ interface GameCanvasProps {
 export default function GameCanvas({ sessionId }: GameCanvasProps) {
   const { data } = authClient.useSession();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { grid, userColor, connected, currentTurnUser, scores, claimCell } =
+  const {
+    grid,
+    userColor,
+    connected,
+    currentTurnUser,
+    scores,
+    claimCell,
+    timeLeftMs,
+    gameStatus,
+    winnerUserId,
+  } =
     useGameSocket(sessionId);
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
+  const isMyTurn = currentTurnUser === data?.user?.id;
+  const activePlayerName =
+    scores.find((s) => s.userId === currentTurnUser)?.username ?? "Opponent";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -103,12 +116,16 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isMyTurn || gameStatus !== "active") {
+        return;
+      }
+
       const cell = getCellFromEvent(e);
       if (cell) {
         claimCell(cell.row, cell.col);
       }
     },
-    [getCellFromEvent, claimCell],
+    [claimCell, gameStatus, getCellFromEvent, isMyTurn],
   );
 
   if (!connected) {
@@ -131,13 +148,23 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
     <div className="flex flex-col items-center gap-3">
       <div className="w-full flex items-start justify-between gap-2">
         <div
-          className={` px-4 py-2 rounded-lg text-sm font-medium ${
-            currentTurnUser === data?.user?.id
-              ? "bg-green-600 text-white"
-              : "bg-neutral-800 text-neutral-300"
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            gameStatus === "finished"
+              ? "bg-neutral-700 text-neutral-300"
+              : isMyTurn
+                ? timeLeftMs <= 5000
+                  ? "bg-red-600 text-white"
+                  : "bg-green-600 text-white"
+                : "bg-neutral-800 text-neutral-300"
           }`}
         >
-          {currentTurnUser === data?.user?.id ? "Your turn! (15 seconds)" : `Wait`}
+          {gameStatus === "finished"
+            ? winnerUserId === data?.user?.id
+              ? "You won"
+              : "Game finished"
+            : isMyTurn
+              ? `Your turn — Time remaining: ${Math.max(0, Math.ceil(timeLeftMs / 1000))}s`
+              : `Waiting for ${activePlayerName}'s turn`}
         </div>
 
         {scores.length > 0 && (
@@ -160,7 +187,7 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
-        className=" cursor-pointer rounded border border-[#222]"
+        className="cursor-pointer rounded border border-[#222]"
       />
     </div>
   );
