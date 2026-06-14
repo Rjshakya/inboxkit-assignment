@@ -151,6 +151,17 @@ export const gameHandlers = createRegistry({
     const { activePlayer, changed } = activePlayerResult.value;
     // Only broadcast if the turn actually changed
     if (changed) {
+      // TODO: check deadlock detetion for changed user
+      // and broadcast it , if user is deadlocked then
+      // technically it cant do anything , so we can actully remove it from
+      // session players , then user will only able to watch it , cant play the game .
+      //
+      // TODO: for deadlock detection
+      //   - we need grid ,
+      //   - last claimed cell of user (we will store it [row ,col]) ,
+      //   - and then run dfs , to check from this cell can user get to the any unclaimed cell ,
+      //   - if it can then user is not deadlocked , otherwise it .
+
       await broadcastToSession(sessionId, {
         type: "turn_changed",
         sessionId,

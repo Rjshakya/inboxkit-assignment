@@ -21,6 +21,7 @@ export function useGameSocket(sessionId: string) {
   const [gameStatus, setGameStatus] = useState<GameState["status"]>("waiting");
   const [winnerUserId, setWinnerUserId] = useState<string | null>(null);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
+  const [shake, setShake] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -108,11 +109,13 @@ export function useGameSocket(sessionId: string) {
 
         case "claim_rejected": {
           toast.error(message.message);
+          setShake(true);
           break;
         }
 
         case "error": {
           toast.error(message.message);
+          setShake(true);
           break;
         }
 
@@ -144,6 +147,20 @@ export function useGameSocket(sessionId: string) {
       setUserColor(null);
     };
   }, [data?.user?.id, sessionId]);
+
+  useEffect(() => {
+    if (!shake) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShake(false);
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [shake]);
 
   useEffect(() => {
     if (!turnExpiresAt || !wsRef.current || gameStatus !== "active") {
@@ -191,6 +208,7 @@ export function useGameSocket(sessionId: string) {
     userColor,
     gameStatus,
     winnerUserId,
+    shake,
     claimCell,
   };
 }

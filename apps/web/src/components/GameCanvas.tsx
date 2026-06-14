@@ -25,12 +25,11 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
     timeLeftMs,
     gameStatus,
     winnerUserId,
-  } =
-    useGameSocket(sessionId);
+    shake,
+  } = useGameSocket(sessionId);
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
   const isMyTurn = currentTurnUser === data?.user?.id;
-  const activePlayerName =
-    scores.find((s) => s.userId === currentTurnUser)?.username ?? "Opponent";
+  const activePlayerName = scores.find((s) => s.userId === currentTurnUser)?.username ?? "Opponent";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -182,13 +181,15 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
         )}
       </div>
 
-      <canvas
-        ref={canvasRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        className="cursor-pointer rounded border border-[#222]"
-      />
+      <div className={shake ? "animate-shake-flash rounded" : "rounded"}>
+        <canvas
+          ref={canvasRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          className="cursor-pointer rounded border border-[#222]"
+        />
+      </div>
     </div>
   );
 }

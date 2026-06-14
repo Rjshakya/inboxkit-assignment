@@ -1,11 +1,7 @@
 import { Result } from "better-result";
 import type { Message } from "@inboxkit-assignment/game-types";
 import { createRegistry } from "./types";
-import {
-  broadcastToSession,
-  sendMessageToUser,
-  sendMessage,
-} from "../redis/pubsub";
+import { broadcastToSession, sendMessageToUser, sendMessage } from "../redis/pubsub";
 import {
   isPlayerExistInSession,
   sendSessionJoinRequestToAdmin,
@@ -53,6 +49,7 @@ export const lobbyHandlers = createRegistry({
       userId: ctx.userId,
       sessionId,
     });
+
     if (Result.isOk(isInSession) && isInSession.value) {
       sendMessage(ctx.ws)({
         type: "error",

@@ -13,7 +13,7 @@ import { gameSession } from "./routes/game/session";
 import type { AppVariables } from "./types";
 import { authMiddleware } from "./middlewares/auth";
 import { createRedisClient } from "./redis/client";
-import { hashToColor } from "./game/colors";
+import { getColor } from "./game/colors";
 import { addConnectedUser, removeConnectedUser } from "./lib/ws";
 import {
   BroadcastChannelId,
@@ -21,7 +21,13 @@ import {
   subscribeToPubSub,
   unsubscribeToPubSub,
 } from "./redis/pubsub";
-import { DBError, RedisError, SessionError, UnauthorizedError, RemovePlayerFromSessionErrors } from "./game/session";
+import {
+  DBError,
+  RedisError,
+  SessionError,
+  UnauthorizedError,
+  RemovePlayerFromSessionErrors,
+} from "./game/session";
 import { CellClaimingWorkflowError } from "./game/logic";
 import type { Message } from "@inboxkit-assignment/game-types";
 import { getHandler } from "./handlers";
@@ -50,7 +56,7 @@ const app = new Hono<{
   .route("/api/game/session", gameSession)
   .get(
     "/ws",
-    upgradeWebSocket((c: Context) => {
+    upgradeWebSocket(async (c: Context) => {
       const user = c.get("user");
       const sessionId = c.req.query("sessionId");
       if (!user || !sessionId) {
@@ -65,7 +71,7 @@ const app = new Hono<{
 
       const userId = user.id;
       const username = user.email.split("@")[0];
-      const userColor = c.get("user_settings")?.color ?? hashToColor(user.id);
+      const userColor = await getColor(redis)(sessionId);
 
       return {
         onOpen: async (_event, ws) => {
@@ -104,7 +110,12 @@ const app = new Hono<{
           await unsubscribeToPubSub(BroadcastChannelId(sessionId));
         },
 
-        onError: () => {},
+        onError: async (e) => {
+          console.error("web-socker:error:", e);
+          removeConnectedUser(userId);
+          await unsubscribeToPubSub(DMChannelId(userId));
+          await unsubscribeToPubSub(BroadcastChannelId(sessionId));
+        },
       };
     }),
   )
@@ -128,7 +139,10 @@ const app = new Hono<{
     }
 
     if (err instanceof RemovePlayerFromSessionErrors) {
-      return c.json({ error: "REMOVE_PLAYER_ERROR", message: err.message, reason: err.reason }, 400);
+      return c.json(
+        { error: "REMOVE_PLAYER_ERROR", message: err.message, reason: err.reason },
+        400,
+      );
     }
 
     return c.json({ error: "Internal server error", message: "Internal server error" }, 500);

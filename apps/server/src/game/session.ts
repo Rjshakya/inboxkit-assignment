@@ -61,7 +61,8 @@ export class SessionError extends TaggedError("SessionError")<{
     | "PlayerAlreadyExist"
     | "NoActivePlayer"
     | "PlayerNotInSession"
-    | "SessionFull";
+    | "SessionFull"
+    | "FailedToChangeActivePlayer";
   message: string;
 }>() {}
 
@@ -621,31 +622,25 @@ export const handleActivePlayerExpired =
           }),
         );
 
-        if (lockAcquired === "OK") {
-          const nextActivePlayer = yield* Result.await(changeActivePlayer(deps.redis)(sessionId));
-          yield* Result.await(
-            Result.tryPromise({
-              try: () => deps.redis.del(RedisSessionTurnLockKey(sessionId)).then(() => true),
-              catch: (cause) =>
-                new RedisError({
-                  message: String(cause),
-                  operation: "DEL_TURN_LOCK",
-                }),
-            }),
-          );
-          return Result.ok({ activePlayer: nextActivePlayer, changed: true });
-        }
-
-        const latestActivePlayer = yield* Result.await(
-          getSessionActivePlayer(deps.redis)(sessionId),
-        );
-        if (!latestActivePlayer) {
+        if (lockAcquired !== "OK") {
           return yield* new SessionError({
             reason: "NoActivePlayer",
-            message: "No active player found",
+            message: "Failed to change active player",
           });
         }
-        return Result.ok({ activePlayer: latestActivePlayer, changed: false });
+
+        const nextActivePlayer = yield* Result.await(changeActivePlayer(deps.redis)(sessionId));
+        yield* Result.await(
+          Result.tryPromise({
+            try: () => deps.redis.del(RedisSessionTurnLockKey(sessionId)).then(() => true),
+            catch: (cause) =>
+              new RedisError({
+                message: String(cause),
+                operation: "DEL_TURN_LOCK",
+              }),
+          }),
+        );
+        return Result.ok({ activePlayer: nextActivePlayer, changed: true });
       }
 
       return Result.ok({ activePlayer, changed: false });
