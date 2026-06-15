@@ -93,10 +93,10 @@ export function useGameSocket(sessionId: string) {
           break;
         }
 
-        // TODO: implement game over
-        // when all blocks are over
-        // also very important identify deadlocks ,
-        // when a user cannot claim cell ,because it locked by opponent.
+        case "players_deadlocked": {
+          toast.info(`${message.userIds.length} player(s) deadlocked and eliminated`);
+          break;
+        }
 
         case "game_over": {
           setScores(message.scores);
@@ -108,14 +108,13 @@ export function useGameSocket(sessionId: string) {
         }
 
         case "claim_rejected": {
-          toast.error(message.message);
           setShake(true);
           break;
         }
 
         case "error": {
           toast.error(message.message);
-          setShake(true);
+          // setShake(true);
           break;
         }
 

@@ -1,13 +1,16 @@
 import { Result } from "better-result";
-import type { Message, ScoreEntry, SessionPlayer } from "@inboxkit-assignment/game-types";
+import type { Grid, Message, ScoreEntry, SessionPlayer } from "@inboxkit-assignment/game-types";
 
 import {
   CellClaimingWorkflowError,
   cellClaimingWorkflow,
   ensureSessionGrid,
-  getSessionScore,
-} from "../game/logic";
-import { getSessionPlayersDetails, handleActivePlayerExpired } from "../game/session";
+  handleActivePlayerExpired,
+  isGameOver,
+  deadlockWorkflow,
+} from "@/services/game-state";
+import { getSessionPlayersDetails } from "@/services/session-player";
+import { redisRepo } from "@/redis/repo";
 import { broadcastToSession, sendMessage } from "../redis/pubsub";
 import { createRegistry } from "./types";
 
@@ -33,10 +36,12 @@ export const gameHandlers = createRegistry({
   get_game_state: async (ctx, payload) => {
     const { sessionId } = payload;
 
+    const repo = redisRepo({ redis: ctx.redis });
+
     const [gridResult, playersResult, scoresResult, activePlayerResult] = await Promise.all([
       ensureSessionGrid(ctx.redis)(sessionId),
       getSessionPlayersDetails({ db: ctx.db })(sessionId),
-      getSessionScore(ctx.redis)(sessionId),
+      repo.scores.get(sessionId),
       handleActivePlayerExpired({ db: ctx.db, redis: ctx.redis })(sessionId),
     ]);
 
@@ -52,7 +57,9 @@ export const gameHandlers = createRegistry({
     const players = toSessionPlayers(playersResult.value);
     const scores = toScoreEntries(scoresResult.value, players);
     const winnerUserId =
-      gridResult.value.every((row) => row.every((cell) => cell.claimed)) && scores[0]
+      gridResult.value.every((row: Grid[number]) =>
+        row.every((cell) => cell.claimed),
+      ) && scores[0]
         ? scores[0].userId
         : null;
 
@@ -104,7 +111,7 @@ export const gameHandlers = createRegistry({
     }
 
     const playersResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
-    const scoresResult = await getSessionScore(ctx.redis)(sessionId);
+    const scoresResult = await redisRepo({ redis: ctx.redis }).scores.get(sessionId);
 
     if (Result.isError(playersResult) || Result.isError(scoresResult)) {
       return;
@@ -127,15 +134,6 @@ export const gameHandlers = createRegistry({
       sessionId,
       scores,
     } satisfies Message);
-
-    if (claimResult.value.isGameOver) {
-      await broadcastToSession(sessionId, {
-        type: "game_over",
-        sessionId,
-        scores,
-        winnerUserId: scores[0]?.userId ?? null,
-      } satisfies Message);
-    }
   },
 
   turn_expired: async (ctx, payload) => {
@@ -150,22 +148,94 @@ export const gameHandlers = createRegistry({
 
     const { activePlayer, changed } = activePlayerResult.value;
     // Only broadcast if the turn actually changed
-    if (changed) {
-      // TODO: check deadlock detetion for changed user
-      // and broadcast it , if user is deadlocked then
-      // technically it cant do anything , so we can actully remove it from
-      // session players , then user will only able to watch it , cant play the game .
-      //
-      // TODO: for deadlock detection
-      //   - we need grid ,
-      //   - last claimed cell of user (we will store it [row ,col]) ,
-      //   - and then run dfs , to check from this cell can user get to the any unclaimed cell ,
-      //   - if it can then user is not deadlocked , otherwise it .
+    if (!changed) return;
 
+    // 1. Notify clients immediately
+    await broadcastToSession(sessionId, {
+      type: "turn_changed",
+      sessionId,
+      activePlayer,
+    } satisfies Message);
+
+    const repo = redisRepo({ redis: ctx.redis });
+
+    // 2. Load grid and players
+    const [gridResult, playersResult] = await Promise.all([
+      repo.grid.get(sessionId),
+      repo.players.get(sessionId),
+    ]);
+
+    if (Result.isError(gridResult) || Result.isError(playersResult)) {
+      return;
+    }
+
+    const grid = gridResult.value;
+    const players = playersResult.value;
+
+    if (!grid) {
+      return;
+    }
+
+    // 3. Check game over
+    if (isGameOver(grid, players)) {
+      const scoresResult = await repo.scores.get(sessionId);
+      const playersDetailsResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
+      if (Result.isOk(scoresResult) && Result.isOk(playersDetailsResult)) {
+        const sessionPlayers = toSessionPlayers(playersDetailsResult.value);
+        const scores = toScoreEntries(scoresResult.value, sessionPlayers);
+        await broadcastToSession(sessionId, {
+          type: "game_over",
+          sessionId,
+          scores,
+          winnerUserId: scores[0]?.userId ?? null,
+        } satisfies Message);
+      }
+      return;
+    }
+
+    // 4. Detect and remove deadlocked players
+    const deadlockResult = await deadlockWorkflow({ redis: ctx.redis })({
+      sessionId,
+      grid,
+      activePlayer,
+    });
+
+    if (Result.isError(deadlockResult)) {
+      return;
+    }
+
+    const { deadlockedPlayers, activePlayer: finalActivePlayer, gameOver } = deadlockResult.value;
+
+    if (deadlockedPlayers.length > 0) {
+      await broadcastToSession(sessionId, {
+        type: "players_deadlocked",
+        sessionId,
+        userIds: deadlockedPlayers,
+      } satisfies Message);
+    }
+
+    if (gameOver) {
+      const scoresResult = await repo.scores.get(sessionId);
+      const playersDetailsResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
+      if (Result.isOk(scoresResult) && Result.isOk(playersDetailsResult)) {
+        const sessionPlayers = toSessionPlayers(playersDetailsResult.value);
+        const scores = toScoreEntries(scoresResult.value, sessionPlayers);
+        await broadcastToSession(sessionId, {
+          type: "game_over",
+          sessionId,
+          scores,
+          winnerUserId: scores[0]?.userId ?? null,
+        } satisfies Message);
+      }
+      return;
+    }
+
+    // 5. If active player changed due to deadlock, broadcast again
+    if (finalActivePlayer.userId !== activePlayer.userId) {
       await broadcastToSession(sessionId, {
         type: "turn_changed",
         sessionId,
-        activePlayer,
+        activePlayer: finalActivePlayer,
       } satisfies Message);
     }
   },

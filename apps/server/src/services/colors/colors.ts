@@ -1,4 +1,7 @@
+import { Result } from "better-result";
 import type Redis from "ioredis";
+
+import { redisRepo } from "@/redis/repo";
 
 const COLORS = [
   "#ef4444",
@@ -78,11 +81,12 @@ const COLORS = [
   "#e63946",
 ];
 
-const RedisColorServiceTokenKey = (sessionId: string) => `color:token:${sessionId}`;
-
 export const getColor = (redis: Redis) => async (sessionId: string) => {
-  const token = await redis.incr(RedisColorServiceTokenKey(sessionId));
-  const index = (token - 1) % COLORS.length;
+  const tokenResult = await redisRepo({ redis }).color.getNextToken(sessionId);
+  if (Result.isError(tokenResult)) {
+    return "#3b82f6";
+  }
 
+  const index = (tokenResult.value - 1) % COLORS.length;
   return COLORS[index] ?? "#3b82f6";
 };

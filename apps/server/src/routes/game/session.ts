@@ -10,13 +10,14 @@ import { createRedisClient } from "@/redis/client";
 import {
   createSessionWorkflow,
   startSessionWorkflow,
-  getSessionPlayersDetails,
   SessionError,
-  UnauthorizedError,
   TURN_DURATION_MS,
-} from "@/game/session";
-import { createEmptyGrid, ensureSessionGrid, getSessionScore } from "@/game/logic";
+} from "@/services/session";
+import { getSessionPlayersDetails } from "@/services/session-player";
+import { ensureSessionGrid } from "@/services/game-state";
+import { redisRepo } from "@/redis/repo";
 import { broadcastToSession } from "@/redis/pubsub";
+import { UnauthorizedError } from "@/services/shared";
 
 import type { AppVariables } from "@/types";
 
@@ -92,7 +93,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
       throw grid.error;
     }
 
-    const scores = await getSessionScore(redis)(id);
+    const scores = await redisRepo({ redis }).scores.get(id);
     if (Result.isError(scores)) {
       throw scores.error;
     }
@@ -106,7 +107,7 @@ export const gameSession = new Hono<{ Variables: AppVariables }>()
     return c.json({
       activePlayer: result.value.activePlayer,
       players: result.value.players,
-      grid: grid.value ?? createEmptyGrid(),
+      grid: grid.value,
       scores: scores.value,
       turnDurationMs: TURN_DURATION_MS,
     });

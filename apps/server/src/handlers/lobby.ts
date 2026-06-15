@@ -4,12 +4,14 @@ import { createRegistry } from "./types";
 import { broadcastToSession, sendMessageToUser, sendMessage } from "../redis/pubsub";
 import {
   isPlayerExistInSession,
-  sendSessionJoinRequestToAdmin,
-  acceptRequestToJoinSession,
   getSessionPlayersDetails,
   removePlayerFromSession,
-  RedisSessionPlayersKey,
-} from "../game/session";
+} from "@/services/session-player";
+import {
+  sendSessionJoinRequestToAdmin,
+  acceptRequestToJoinSession,
+} from "@/services/session";
+import { keys } from "@/redis/keys";
 
 export const lobbyHandlers = createRegistry({
   get_session_players: async (ctx, payload) => {
@@ -58,7 +60,7 @@ export const lobbyHandlers = createRegistry({
       return;
     }
 
-    const count = await ctx.redis.llen(RedisSessionPlayersKey(sessionId));
+    const count = await ctx.redis.llen(keys.session.players(sessionId));
     if (count >= 50) {
       sendMessage(ctx.ws)({
         type: "error",

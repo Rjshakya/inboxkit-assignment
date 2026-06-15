@@ -4,7 +4,7 @@ import { userSettingsTable } from "@inboxkit-assignment/db/schema/settings";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { UnauthorizedError } from "../game/session";
+import { UnauthorizedError } from "@/services/shared";
 import type { AppVariables } from "../types";
 
 const updateSchema = z.object({

@@ -1,4 +1,5 @@
 import { createRedisClient } from "@/redis/client";
+import { keys } from "@/redis/keys";
 import { connectedUsers } from "../lib/ws";
 import type { BroadCastMessage, DMMessage, Message } from "@inboxkit-assignment/game-types";
 
@@ -41,8 +42,8 @@ redisSubscriber.on("message", (channel, message) => {
   }
 });
 
-export const BroadcastChannelId = (sessionId: string) => `session:${sessionId}:broadcast`;
-export const DMChannelId = (toUserId: string) => `user:${toUserId}:dm`;
+export const BroadcastChannelId = keys.broadcastChannel;
+export const DMChannelId = keys.dmChannel;
 
 export function subscribeToPubSub(channelId: string) {
   return redisSubscriber.subscribe(channelId);

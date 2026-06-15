@@ -71,9 +71,15 @@ export type Message =
     }
   | { type: "turn_changed"; sessionId: string; activePlayer: ActivePlayer }
   | { type: "score_updated"; sessionId: string; scores: ScoreEntry[] }
+  | { type: "players_deadlocked"; sessionId: string; userIds: string[] }
   | {
       type: "claim_rejected";
-      reason: "NotActivePlayer" | "CellAlreadyClaimed" | "NotAdjacent" | "OutOfBounds";
+      reason:
+        | "NotActivePlayer"
+        | "CellAlreadyClaimed"
+        | "NotAdjacent"
+        | "OutOfBounds"
+        | "InvalidState";
       message: string;
     }
   | {

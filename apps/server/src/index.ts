@@ -13,7 +13,7 @@ import { gameSession } from "./routes/game/session";
 import type { AppVariables } from "./types";
 import { authMiddleware } from "./middlewares/auth";
 import { createRedisClient } from "./redis/client";
-import { getColor } from "./game/colors";
+import { getColor } from "./services/colors";
 import { addConnectedUser, removeConnectedUser } from "./lib/ws";
 import {
   BroadcastChannelId,
@@ -24,11 +24,13 @@ import {
 import {
   DBError,
   RedisError,
-  SessionError,
   UnauthorizedError,
+} from "./services/shared";
+import {
+  SessionError,
   RemovePlayerFromSessionErrors,
-} from "./game/session";
-import { CellClaimingWorkflowError } from "./game/logic";
+} from "./services/session";
+import { CellClaimingWorkflowError } from "./services/game-state";
 import type { Message } from "@inboxkit-assignment/game-types";
 import { getHandler } from "./handlers";
 
