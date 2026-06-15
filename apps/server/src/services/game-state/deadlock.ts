@@ -3,7 +3,6 @@ import type { Grid } from "@inboxkit-assignment/game-types";
 import type Redis from "ioredis";
 
 import { redisRepo } from "@/redis/repo";
-import { changeActivePlayer } from "./turn";
 import { isCellInBounds } from "./grid";
 
 export const isPlayerDeadlocked = (grid: Grid, userId: string) => {
@@ -43,21 +42,16 @@ export const isPlayerDeadlocked = (grid: Grid, userId: string) => {
 
 export const deadlockWorkflow =
   ({ redis }: { redis: Redis }) =>
-  (input: { sessionId: string; grid: Grid; activePlayer: { userId: string; expiry: number } }) => {
-    const { sessionId, grid, activePlayer } = input;
+  (input: {
+    sessionId: string;
+    grid: Grid;
+    activePlayer: { userId: string; expiry: number };
+    players: string[];
+  }) => {
+    const { sessionId, grid, players } = input;
+    const repo = redisRepo({ redis });
 
     return Result.gen(async function* () {
-      const repo = redisRepo({ redis });
-
-      const players = yield* Result.await(repo.players.get(sessionId));
-      if (!players.length) {
-        return Result.ok({
-          deadlockedPlayers: [] as string[],
-          activePlayer,
-          gameOver: true,
-        });
-      }
-
       const deadlockedPlayers: string[] = [];
       for (const userId of players) {
         if (isPlayerDeadlocked(grid, userId)) {
@@ -66,22 +60,9 @@ export const deadlockWorkflow =
         }
       }
 
-      const activePlayerRemoved = deadlockedPlayers.includes(activePlayer.userId);
-
-      if (!activePlayerRemoved) {
-        return Result.ok({
-          deadlockedPlayers,
-          activePlayer,
-          gameOver: false,
-        });
-      }
-
-      const nextActivePlayer = yield* Result.await(changeActivePlayer(redis)(sessionId));
-
       return Result.ok({
         deadlockedPlayers,
-        activePlayer: nextActivePlayer,
-        gameOver: false,
+        playersLeft: players.length - deadlockedPlayers.length,
       });
     });
   };

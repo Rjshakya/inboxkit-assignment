@@ -1,10 +1,13 @@
 import { Result } from "better-result";
+import { eq } from "@inboxkit-assignment/db";
+import { gameStateTable } from "@inboxkit-assignment/db/schema/game";
 import type { Grid, Message, ScoreEntry, SessionPlayer } from "@inboxkit-assignment/game-types";
 
 import {
   CellClaimingWorkflowError,
   cellClaimingWorkflow,
   ensureSessionGrid,
+  gameOverWorkflow,
   handleActivePlayerExpired,
   isGameOver,
   deadlockWorkflow,
@@ -13,6 +16,7 @@ import { getSessionPlayersDetails } from "@/services/session-player";
 import { redisRepo } from "@/redis/repo";
 import { broadcastToSession, sendMessage } from "../redis/pubsub";
 import { createRegistry } from "./types";
+import { getGameSession } from "@/services/session";
 
 const toSessionPlayers = (players: { userId?: string; username?: string }[]): SessionPlayer[] =>
   players.map((player) => ({
@@ -35,8 +39,44 @@ const toScoreEntries = (
 export const gameHandlers = createRegistry({
   get_game_state: async (ctx, payload) => {
     const { sessionId } = payload;
-
     const repo = redisRepo({ redis: ctx.redis });
+
+    const session = await getGameSession(ctx.db)(sessionId);
+
+    if (Result.isError(session)) {
+      throw session.error;
+    }
+
+    const [sessionRow] = session.value;
+
+    if (sessionRow?.isExpired) {
+      const [state] = await ctx.db
+        .select()
+        .from(gameStateTable)
+        .where(eq(gameStateTable.sessionId, sessionId))
+        .limit(1);
+
+      const playersResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
+
+      if (state && Result.isOk(playersResult)) {
+        const players = toSessionPlayers(playersResult.value);
+        const scores = state.scores as ScoreEntry[];
+
+        sendMessage(ctx.ws)({
+          type: "game_state",
+          state: {
+            sessionId,
+            grid: state.grid as Grid,
+            activePlayer: null,
+            scores,
+            players,
+            status: "finished",
+            winnerUserId: state.winnerUserId ?? null,
+          },
+        } satisfies Message);
+      }
+      return;
+    }
 
     const [gridResult, playersResult, scoresResult, activePlayerResult] = await Promise.all([
       ensureSessionGrid(ctx.redis)(sessionId),
@@ -57,9 +97,7 @@ export const gameHandlers = createRegistry({
     const players = toSessionPlayers(playersResult.value);
     const scores = toScoreEntries(scoresResult.value, players);
     const winnerUserId =
-      gridResult.value.every((row: Grid[number]) =>
-        row.every((cell) => cell.claimed),
-      ) && scores[0]
+      gridResult.value.every((row: Grid[number]) => row.every((cell) => cell.claimed)) && scores[0]
         ? scores[0].userId
         : null;
 
@@ -178,16 +216,16 @@ export const gameHandlers = createRegistry({
 
     // 3. Check game over
     if (isGameOver(grid, players)) {
-      const scoresResult = await repo.scores.get(sessionId);
-      const playersDetailsResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
-      if (Result.isOk(scoresResult) && Result.isOk(playersDetailsResult)) {
-        const sessionPlayers = toSessionPlayers(playersDetailsResult.value);
-        const scores = toScoreEntries(scoresResult.value, sessionPlayers);
+      const gameOverResult = await gameOverWorkflow({ db: ctx.db, redis: ctx.redis })({
+        sessionId,
+      });
+
+      if (Result.isOk(gameOverResult)) {
         await broadcastToSession(sessionId, {
           type: "game_over",
           sessionId,
-          scores,
-          winnerUserId: scores[0]?.userId ?? null,
+          scores: gameOverResult.value.scores,
+          winnerUserId: gameOverResult.value.winnerUserId,
         } satisfies Message);
       }
       return;
@@ -198,13 +236,14 @@ export const gameHandlers = createRegistry({
       sessionId,
       grid,
       activePlayer,
+      players,
     });
 
     if (Result.isError(deadlockResult)) {
       return;
     }
 
-    const { deadlockedPlayers, activePlayer: finalActivePlayer, gameOver } = deadlockResult.value;
+    const { deadlockedPlayers, playersLeft } = deadlockResult.value;
 
     if (deadlockedPlayers.length > 0) {
       await broadcastToSession(sessionId, {
@@ -214,29 +253,19 @@ export const gameHandlers = createRegistry({
       } satisfies Message);
     }
 
-    if (gameOver) {
-      const scoresResult = await repo.scores.get(sessionId);
-      const playersDetailsResult = await getSessionPlayersDetails({ db: ctx.db })(sessionId);
-      if (Result.isOk(scoresResult) && Result.isOk(playersDetailsResult)) {
-        const sessionPlayers = toSessionPlayers(playersDetailsResult.value);
-        const scores = toScoreEntries(scoresResult.value, sessionPlayers);
+    if (playersLeft === 1) {
+      const gameOverResult = await gameOverWorkflow({ db: ctx.db, redis: ctx.redis })({
+        sessionId,
+      });
+
+      if (Result.isOk(gameOverResult)) {
         await broadcastToSession(sessionId, {
           type: "game_over",
           sessionId,
-          scores,
-          winnerUserId: scores[0]?.userId ?? null,
+          scores: gameOverResult.value.scores,
+          winnerUserId: gameOverResult.value.winnerUserId,
         } satisfies Message);
       }
-      return;
-    }
-
-    // 5. If active player changed due to deadlock, broadcast again
-    if (finalActivePlayer.userId !== activePlayer.userId) {
-      await broadcastToSession(sessionId, {
-        type: "turn_changed",
-        sessionId,
-        activePlayer: finalActivePlayer,
-      } satisfies Message);
     }
   },
 });

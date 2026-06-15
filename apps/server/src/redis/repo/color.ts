@@ -14,4 +14,14 @@ export const colorRepo = ({ redis }: { redis: Redis }) => ({
           operation: "INCR_COLOR_TOKEN",
         }),
     }),
+
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () => redis.del(keys.colorToken(sessionId)).then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_COLOR_TOKEN",
+        }),
+    }),
 });

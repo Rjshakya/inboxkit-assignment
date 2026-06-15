@@ -36,4 +36,14 @@ export const gridRepo = ({ redis }: { redis: Redis }) => ({
           operation: "SET_GRID",
         }),
     }),
+
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () => redis.del(keys.session.grid(sessionId)).then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_GRID",
+        }),
+    }),
 });

@@ -36,4 +36,17 @@ export const sessionMetaRepo = ({ redis }: { redis: Redis }) => ({
           operation: "GET_STARTED_AT",
         }),
     }),
+
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () =>
+        redis
+          .del(keys.session.startedAt(sessionId), keys.session.startedBy(sessionId))
+          .then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_SESSION_META",
+        }),
+    }),
 });

@@ -84,6 +84,35 @@ export const gameSessionResultInsertSchema = createInsertSchema(gameSessionResul
 export const gameSessionResultSelectSchema = createSelectSchema(gameSessionResultTable);
 export const gameSessionResultUpdateSchema = createUpdateSchema(gameSessionResultTable);
 
+export const gameStateTable = t.pgTable("game_state", {
+  id: t
+    .text()
+    .primaryKey()
+    .$defaultFn(() => randomUUID().toString()),
+  sessionId: t
+    .text()
+    .notNull()
+    .references(() => gameSessionTable.id)
+    .unique(),
+  grid: t.jsonb().notNull(),
+  scores: t.jsonb().notNull(),
+  winnerUserId: t.text(),
+  finishedAt: t.timestamp("finished_at").defaultNow().notNull(),
+  createdAt: t.timestamp("created_at").defaultNow().notNull(),
+  updatedAt: t
+    .timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export type gameStateInsert = InferInsertModel<typeof gameStateTable>;
+export type gameStateSelect = InferSelectModel<typeof gameStateTable>;
+
+export const gameStateInsertSchema = createInsertSchema(gameStateTable);
+export const gameStateSelectSchema = createSelectSchema(gameStateTable);
+export const gameStateUpdateSchema = createUpdateSchema(gameStateTable);
+
 export const gameSessionPlayersInsertSchema = createInsertSchema(gameSessionPlayersTable);
 export const gameSessionPlayersSelectSchema = createSelectSchema(gameSessionPlayersTable);
 export const gameSessionPlayersUpdateSchema = createUpdateSchema(gameSessionPlayersTable);

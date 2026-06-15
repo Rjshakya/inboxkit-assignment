@@ -60,4 +60,17 @@ export const activePlayerRepo = ({ redis }: { redis: Redis }) => ({
           operation: "DEL_TURN_LOCK",
         }),
     }),
+
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () =>
+        redis
+          .del(keys.session.activePlayer(sessionId), keys.session.turnLock(sessionId))
+          .then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_ACTIVE_PLAYER",
+        }),
+    }),
 });

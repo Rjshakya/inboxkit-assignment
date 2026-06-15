@@ -47,6 +47,16 @@ export const playersRepo = ({ redis }: { redis: Redis }) => ({
         }),
     }),
 
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () => redis.del(keys.session.players(sessionId)).then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_PLAYERS",
+        }),
+    }),
+
   exists: (input: { sessionId: string; userId: string }) =>
     Result.gen(async function* () {
       const { sessionId, userId } = input;

@@ -44,4 +44,14 @@ export const scoresRepo = ({ redis }: { redis: Redis }) => ({
           operation: "ZINCRBY",
         }),
     }),
+
+  delete: (sessionId: string) =>
+    Result.tryPromise({
+      try: () => redis.del(keys.session.scores(sessionId)).then(() => true),
+      catch: (cause) =>
+        new RedisError({
+          message: String(cause),
+          operation: "DELETE_SCORES",
+        }),
+    }),
 });

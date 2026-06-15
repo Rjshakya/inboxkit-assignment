@@ -6,18 +6,11 @@ import { redisRepo } from "@/redis/repo";
 
 import { CellClaimingWorkflowError } from "./errors";
 import { ensureSessionGrid, isCellInBounds } from "./grid";
-import { isGameOver } from "./game-over";
 import { getSessionActivePlayer } from "./turn";
 
 export const cellClaimingWorkflow =
   (deps: { db: NodePgDatabase<any>; redis: Redis }) =>
-  (input: {
-    sessionId: string;
-    userId: string;
-    userColor: string;
-    row: number;
-    col: number;
-  }) => {
+  (input: { sessionId: string; userId: string; userColor: string; row: number; col: number }) => {
     const { redis } = deps;
     const { sessionId, userId, userColor, row, col } = input;
 
@@ -102,14 +95,12 @@ export const cellClaimingWorkflow =
 
       yield* Result.await(repo.cell.markFirstCellClaimed(sessionId, userId));
 
-      const score = yield* Result.await(repo.scores.increment(sessionId, userId));
+      yield* Result.await(repo.scores.increment(sessionId, userId));
 
       return Result.ok({
         row,
         col,
         grid: nextGrid,
-        score,
-        isGameOver: isGameOver(nextGrid),
       });
     });
   };

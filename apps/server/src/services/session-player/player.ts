@@ -1,9 +1,6 @@
 import { Result } from "better-result";
 import { and, asc, eq, type NodePgDatabase } from "@inboxkit-assignment/db";
-import {
-  gameSessionPlayersTable,
-  gameSessionTable,
-} from "@inboxkit-assignment/db/schema/game";
+import { gameSessionPlayersTable, gameSessionTable } from "@inboxkit-assignment/db/schema/game";
 import { user } from "@inboxkit-assignment/db/schema/auth";
 import type Redis from "ioredis";
 
@@ -65,8 +62,7 @@ export const addPlayerInSession =
 
       const result = yield* Result.await(
         Result.tryPromise({
-          try: () =>
-            deps.db.insert(gameSessionPlayersTable).values(values).returning(),
+          try: () => deps.db.insert(gameSessionPlayersTable).values(values).returning(),
           catch: (cause) =>
             new DBError({
               message: String(cause),
@@ -96,8 +92,8 @@ export const getSessionPlayersDetails =
           .then((players) => {
             return players.map((p) => {
               return {
-                userId: p.user?.id,
-                username: p.user?.email?.split(`@`)[0],
+                userId: p.user?.id as string,
+                username: p.user?.email?.split(`@`)[0] as string,
               };
             });
           }),
@@ -110,13 +106,11 @@ export const getSessionPlayersDetails =
   };
 
 export const isPlayerExistInSession =
-  (deps: { redis: Redis }) =>
-  (input: { userId: string; sessionId: string }) =>
+  (deps: { redis: Redis }) => (input: { userId: string; sessionId: string }) =>
     redisRepo({ redis: deps.redis }).players.exists(input);
 
 export const removePlayerFromSession =
-  (deps: SessionPlayerDeps) =>
-  (input: { byUserId: string; userId: string; sessionId: string }) => {
+  (deps: SessionPlayerDeps) => (input: { byUserId: string; userId: string; sessionId: string }) => {
     const { db, redis } = deps;
     const { byUserId, userId, sessionId } = input;
 

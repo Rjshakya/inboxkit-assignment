@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import type { NodePgDatabase } from "@inboxkit-assignment/db";
+import { eq, type NodePgDatabase } from "@inboxkit-assignment/db";
 import { gameSessionTable } from "@inboxkit-assignment/db/schema/game";
 import type Redis from "ioredis";
 
@@ -52,3 +52,21 @@ export const createSessionWorkflow =
       });
     });
   };
+
+export const getGameSession = (db: CreateSessionWorkflowDeps["db"]) => (sessionId: string) => {
+  return Result.tryPromise({
+    try: async () => {
+      const res = await db
+        .select()
+        .from(gameSessionTable)
+        .where(eq(gameSessionTable.id, sessionId));
+      return res;
+    },
+    catch: (e) => {
+      return new DBError({
+        message: "QUERY",
+        operation: String(e),
+      });
+    },
+  });
+};

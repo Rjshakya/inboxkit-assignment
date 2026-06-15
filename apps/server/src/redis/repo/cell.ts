@@ -3,6 +3,7 @@ import type Redis from "ioredis";
 
 import { keys } from "@/redis/keys";
 import { RedisError } from "@/services/shared/errors";
+import { scanDelete } from "./utils";
 
 export const cellRepo = ({ redis }: { redis: Redis }) => ({
   set: (input: {
@@ -45,4 +46,10 @@ export const cellRepo = ({ redis }: { redis: Redis }) => ({
           operation: "SET_FIRST_TIME_CLAIMING",
         }),
     }),
+
+  deleteAllForSession: (sessionId: string) =>
+    scanDelete(redis, `cell:*:${sessionId}`),
+
+  deleteFirstTimeFlagsForSession: (sessionId: string) =>
+    scanDelete(redis, `session:${sessionId}:user:*:isFirstTimeClaiming`),
 });
