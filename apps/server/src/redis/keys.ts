@@ -8,8 +8,7 @@ export const keys = {
     startedAt: (sessionId: string) => `session:startedAt:${sessionId}`,
     startedBy: (sessionId: string) => `session:startedBy:${sessionId}`,
   },
-  cell: (sessionId: string, row: number, col: number) =>
-    `cell:${row}:${col}:${sessionId}`,
+  cell: (sessionId: string, row: number, col: number) => `cell:${row}:${col}:${sessionId}`,
   firstTimeClaiming: (sessionId: string, userId: string) =>
     `session:${sessionId}:user:${userId}:isFirstTimeClaiming`,
   colorToken: (sessionId: string) => `color:token:${sessionId}`,

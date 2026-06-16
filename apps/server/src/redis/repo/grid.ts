@@ -28,8 +28,7 @@ export const gridRepo = ({ redis }: { redis: Redis }) => ({
 
   set: (sessionId: string, grid: Grid) =>
     Result.tryPromise({
-      try: () =>
-        redis.set(keys.session.grid(sessionId), JSON.stringify(grid)).then(() => true),
+      try: () => redis.set(keys.session.grid(sessionId), JSON.stringify(grid)).then(() => true),
       catch: (cause) =>
         new RedisError({
           message: String(cause),

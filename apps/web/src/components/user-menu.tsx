@@ -39,10 +39,15 @@ export default function UserMenu() {
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/$userId/settings" params={{ userId: session.user.id }}>
-              Settings
-            </Link>
+          <DropdownMenuItem
+            onClick={() => {
+              navigate({
+                to: "/$userId/settings",
+                params: { userId: session.user.id },
+              });
+            }}
+          >
+            Settings
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"

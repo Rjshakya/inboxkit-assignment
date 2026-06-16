@@ -8,7 +8,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@inboxkit-assignment/ui/components/card";
+} from "@inboxkit-assignment/ui/components/ui/card";
 import { Input } from "@inboxkit-assignment/ui/components/input";
 import { Label } from "@inboxkit-assignment/ui/components/label";
 import { createFileRoute } from "@tanstack/react-router";

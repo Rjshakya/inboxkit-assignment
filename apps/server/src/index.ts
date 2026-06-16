@@ -21,15 +21,8 @@ import {
   subscribeToPubSub,
   unsubscribeToPubSub,
 } from "./redis/pubsub";
-import {
-  DBError,
-  RedisError,
-  UnauthorizedError,
-} from "./services/shared";
-import {
-  SessionError,
-  RemovePlayerFromSessionErrors,
-} from "./services/session";
+import { DBError, RedisError, UnauthorizedError } from "./services/shared";
+import { SessionError, RemovePlayerFromSessionErrors } from "./services/session";
 import { CellClaimingWorkflowError } from "./services/game-state";
 import type { Message } from "@inboxkit-assignment/game-types";
 import { getHandler } from "./handlers";

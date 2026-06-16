@@ -9,8 +9,7 @@ export const scoresRepo = ({ redis }: { redis: Redis }) => ({
     Result.gen(async function* () {
       const scores = yield* Result.await(
         Result.tryPromise({
-          try: () =>
-            redis.zrevrange(keys.session.scores(sessionId), 0, -1, "WITHSCORES"),
+          try: () => redis.zrevrange(keys.session.scores(sessionId), 0, -1, "WITHSCORES"),
           catch: (cause) =>
             new RedisError({
               message: String(cause),
@@ -36,8 +35,7 @@ export const scoresRepo = ({ redis }: { redis: Redis }) => ({
 
   increment: (sessionId: string, userId: string) =>
     Result.tryPromise({
-      try: () =>
-        redis.zincrby(keys.session.scores(sessionId), 1, userId).then(Number),
+      try: () => redis.zincrby(keys.session.scores(sessionId), 1, userId).then(Number),
       catch: (cause) =>
         new RedisError({
           message: String(cause),

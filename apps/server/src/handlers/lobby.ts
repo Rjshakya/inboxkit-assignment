@@ -7,10 +7,7 @@ import {
   getSessionPlayersDetails,
   removePlayerFromSession,
 } from "@/services/session-player";
-import {
-  sendSessionJoinRequestToAdmin,
-  acceptRequestToJoinSession,
-} from "@/services/session";
+import { sendSessionJoinRequestToAdmin, acceptRequestToJoinSession } from "@/services/session";
 import { keys } from "@/redis/keys";
 
 export const lobbyHandlers = createRegistry({

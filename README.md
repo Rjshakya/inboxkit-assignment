@@ -235,21 +235,21 @@ pnpm run dev:server  # Backend only
 
 ## Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `pnpm run dev` | Start all apps in development mode |
-| `pnpm run build` | Build all apps for production |
-| `pnpm run dev:web` | Start only the web frontend |
-| `pnpm run dev:server` | Start only the API server |
+| Script                 | Description                                |
+| ---------------------- | ------------------------------------------ |
+| `pnpm run dev`         | Start all apps in development mode         |
+| `pnpm run build`       | Build all apps for production              |
+| `pnpm run dev:web`     | Start only the web frontend                |
+| `pnpm run dev:server`  | Start only the API server                  |
 | `pnpm run check-types` | Check TypeScript types across all packages |
-| `pnpm run check` | Run Oxlint and auto-format with Oxfmt |
-| `pnpm run db:push` | Push Drizzle schema changes to PostgreSQL |
-| `pnpm run db:generate` | Generate Drizzle migration files |
-| `pnpm run db:migrate` | Run pending Drizzle migrations |
-| `pnpm run db:studio` | Open Drizzle Kit Studio (DB GUI) |
-| `pnpm run db:start` | Start PostgreSQL via Docker Compose |
-| `pnpm run db:stop` | Stop PostgreSQL container |
-| `pnpm run db:down` | Remove PostgreSQL container |
+| `pnpm run check`       | Run Oxlint and auto-format with Oxfmt      |
+| `pnpm run db:push`     | Push Drizzle schema changes to PostgreSQL  |
+| `pnpm run db:generate` | Generate Drizzle migration files           |
+| `pnpm run db:migrate`  | Run pending Drizzle migrations             |
+| `pnpm run db:studio`   | Open Drizzle Kit Studio (DB GUI)           |
+| `pnpm run db:start`    | Start PostgreSQL via Docker Compose        |
+| `pnpm run db:stop`     | Stop PostgreSQL container                  |
+| `pnpm run db:down`     | Remove PostgreSQL container                |
 
 ## UI Customization
 
@@ -275,13 +275,13 @@ import { Button } from "@inboxkit-assignment/ui/components/button";
 
 ### REST Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/*` | Better-Auth authentication handlers |
-| `POST` | `/api/game/session` | Create a new game session (authenticated) |
-| `GET`  | `/api/user/settings` | Get current user's settings |
+| Method | Path                 | Description                                                |
+| ------ | -------------------- | ---------------------------------------------------------- |
+| `POST` | `/api/auth/*`        | Better-Auth authentication handlers                        |
+| `POST` | `/api/game/session`  | Create a new game session (authenticated)                  |
+| `GET`  | `/api/user/settings` | Get current user's settings                                |
 | `POST` | `/api/user/settings` | Update current user's settings (body: `{ color: string }`) |
-| `GET`  | `/ws` | Upgrade to WebSocket connection (authenticated) |
+| `GET`  | `/ws`                | Upgrade to WebSocket connection (authenticated)            |
 
 ### WebSocket Messages
 

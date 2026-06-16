@@ -17,8 +17,7 @@ export const playersRepo = ({ redis }: { redis: Redis }) => ({
 
   add: (sessionId: string, userId: string) =>
     Result.tryPromise({
-      try: () =>
-        redis.rpush(keys.session.players(sessionId), userId).then(() => true),
+      try: () => redis.rpush(keys.session.players(sessionId), userId).then(() => true),
       catch: (cause) =>
         new RedisError({
           message: String(cause),
@@ -28,8 +27,7 @@ export const playersRepo = ({ redis }: { redis: Redis }) => ({
 
   remove: (sessionId: string, userId: string) =>
     Result.tryPromise({
-      try: () =>
-        redis.lrem(keys.session.players(sessionId), 0, userId).then(() => true),
+      try: () => redis.lrem(keys.session.players(sessionId), 0, userId).then(() => true),
       catch: (cause) =>
         new RedisError({
           message: String(cause),

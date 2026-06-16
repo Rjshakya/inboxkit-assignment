@@ -12,6 +12,7 @@
     "check-types": "turbo check-types",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
+    "deploy:web": "turbo -F web deploy",
     "docker:build": "docker build -f apps/server/Dockerfile -t inboxkit-server:latest .",
     "docker:tag": "docker tag inboxkit-server:latest raj631/inboxkit-server:latest",
     "docker:push": "docker push raj631/inboxkit-server:latest",

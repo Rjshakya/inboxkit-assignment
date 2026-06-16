@@ -41,8 +41,7 @@ export const activePlayerRepo = ({ redis }: { redis: Redis }) => ({
 
   acquireTurnLock: (sessionId: string) =>
     Result.tryPromise({
-      try: () =>
-        redis.set(keys.session.turnLock(sessionId), "1", "PX", 2000, "NX"),
+      try: () => redis.set(keys.session.turnLock(sessionId), "1", "PX", 2000, "NX"),
       catch: (cause) =>
         new RedisError({
           message: String(cause),
@@ -52,8 +51,7 @@ export const activePlayerRepo = ({ redis }: { redis: Redis }) => ({
 
   releaseTurnLock: (sessionId: string) =>
     Result.tryPromise({
-      try: () =>
-        redis.del(keys.session.turnLock(sessionId)).then(() => true),
+      try: () => redis.del(keys.session.turnLock(sessionId)).then(() => true),
       catch: (cause) =>
         new RedisError({
           message: String(cause),

@@ -17,10 +17,7 @@ export const sendSessionJoinRequestToAdmin =
       const session = yield* Result.await(
         Result.tryPromise({
           try: () =>
-            deps.db
-              .select()
-              .from(gameSessionTable)
-              .where(eq(gameSessionTable.id, input.sessionId)),
+            deps.db.select().from(gameSessionTable).where(eq(gameSessionTable.id, input.sessionId)),
           catch: (cause) =>
             new DBError({
               message: String(cause),

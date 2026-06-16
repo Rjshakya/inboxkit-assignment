@@ -8,7 +8,7 @@ export const GRID_SIZE = 20;
 
 export const createEmptyGrid = (): Grid =>
   Array.from({ length: GRID_SIZE }, () =>
-    Array.from({ length: GRID_SIZE }, () => ({ claimed: false } as const)),
+    Array.from({ length: GRID_SIZE }, () => ({ claimed: false }) as const),
   );
 
 export const isCellInBounds = (row: number, col: number) =>

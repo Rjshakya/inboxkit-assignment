@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import Header from "../components/header";
 import appCss from "../index.css?url";
 const queryClient = new QueryClient();
 
@@ -20,7 +19,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "inboxkit-assignment",
+        title: "Conquest — Real-Time Grid Strategy",
       },
     ],
     links: [
@@ -36,17 +35,16 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootDocument() {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="">
       <head>
         <HeadContent />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
           <div className="grid h-svh grid-rows-[auto_1fr]">
-            <Header />
             <Outlet />
           </div>
-          <Toaster richColors />
+          <Toaster richColors position="top-center" />
           <TanStackRouterDevtools position="bottom-left" />
           <Scripts />
         </QueryClientProvider>

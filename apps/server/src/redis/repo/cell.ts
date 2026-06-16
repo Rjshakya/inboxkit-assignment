@@ -47,8 +47,7 @@ export const cellRepo = ({ redis }: { redis: Redis }) => ({
         }),
     }),
 
-  deleteAllForSession: (sessionId: string) =>
-    scanDelete(redis, `cell:*:${sessionId}`),
+  deleteAllForSession: (sessionId: string) => scanDelete(redis, `cell:*:${sessionId}`),
 
   deleteFirstTimeFlagsForSession: (sessionId: string) =>
     scanDelete(redis, `session:${sessionId}:user:*:isFirstTimeClaiming`),
