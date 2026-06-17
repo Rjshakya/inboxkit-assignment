@@ -106,10 +106,7 @@ export function HowToPlaySection({ playersUrls }: HowToPlaySectionProps) {
                 {Array.from({ length: 24 }).map((_, i) => (
                   <div
                     key={i}
-                    className={cn(
-                      "aspect-square rounded-[1px]",
-                      i < 9 ? "bg-chart-1" : "bg-muted",
-                    )}
+                    className={cn("aspect-square rounded-[1px]", i < 9 ? "bg-chart-1" : "bg-muted")}
                   />
                 ))}
               </div>

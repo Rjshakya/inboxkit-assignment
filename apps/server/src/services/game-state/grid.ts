@@ -1,10 +1,8 @@
 import { Result } from "better-result";
-import type { Grid } from "@inboxkit-assignment/game-types";
+import { GRID_SIZE, type Grid } from "@inboxkit-assignment/game-types";
 import type Redis from "ioredis";
 
 import { redisRepo } from "@/redis/repo";
-
-export const GRID_SIZE = 20;
 
 export const createEmptyGrid = (): Grid =>
   Array.from({ length: GRID_SIZE }, () =>

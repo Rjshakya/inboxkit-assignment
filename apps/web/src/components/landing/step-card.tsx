@@ -12,7 +12,14 @@ interface StepCardProps {
   className?: string;
 }
 
-export function StepCard({ step, icon: Icon, title, description, children, className }: StepCardProps) {
+export function StepCard({
+  step,
+  icon: Icon,
+  title,
+  description,
+  children,
+  className,
+}: StepCardProps) {
   return (
     <Card variant="outline" className={cn("row-span-2 grid grid-rows-subgrid", className)}>
       <div className="space-y-3">

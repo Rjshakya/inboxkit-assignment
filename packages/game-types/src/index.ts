@@ -113,3 +113,5 @@ export type BroadCastMessage<T> = {
 export type DMMessage<T> = {
   data: T;
 };
+
+export const GRID_SIZE = 8;
