@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { createGameSession } from "@/lib/game";
 
-export const Route = createFileRoute("/game")({
+export const Route = createFileRoute("/_game/game")({
   component: GamePage,
 });
 
@@ -17,14 +17,14 @@ function GamePage() {
   const handleCreateRoom = useCallback(async () => {
     try {
       const id = await createGameSession();
-      navigate({ to: "/game_lobby", search: { session: id } });
+      navigate({ to: "/lobby", search: { session: id } });
     } catch {
       toast.error("Failed to create game session");
     }
   }, [navigate]);
 
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="mt-14 flex h-full w-full items-center justify-center">
       <Button onClick={handleCreateRoom} size="lg">
         Create a room
       </Button>

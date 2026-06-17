@@ -167,7 +167,7 @@ export default function GameCanvas({ sessionId }: GameCanvasProps) {
         </div>
 
         {scores.length > 0 && (
-          <div className="bg-neutral-900 rounded-lg p-3 text-sm min-w-[200px]">
+          <div className="bg-neutral-900 rounded-lg p-3 text-sm min-w-50">
             <h3 className="font-semibold text-white mb-2">Scores</h3>
             {scores.map((s, i) => (
               <div key={s.userId} className="flex justify-between py-1 text-neutral-300">

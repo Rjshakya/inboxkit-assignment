@@ -12,7 +12,7 @@ export function CTASection() {
   const handleCreateGame = useCallback(async () => {
     try {
       const id = await createGameSession();
-      navigate({ to: "/game_lobby", search: { session: id } });
+      navigate({ to: "/lobby", search: { session: id } });
     } catch {
       navigate({ to: "/game" });
     }
