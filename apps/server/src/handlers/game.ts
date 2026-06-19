@@ -11,6 +11,7 @@ import {
   handleActivePlayerExpired,
   isGameOver,
   deadlockWorkflow,
+  changeActivePlayer,
 } from "@/services/game-state";
 import { getSessionPlayersDetails } from "@/services/session-player";
 import { redisRepo } from "@/redis/repo";
@@ -166,6 +167,22 @@ export const gameHandlers = createRegistry({
       userId: ctx.userId,
       userColor: ctx.userColor,
     } satisfies Message);
+
+    const changeTurn = await changeActivePlayer(ctx.redis)(sessionId)
+
+    if(Result.isOk(changeTurn)){
+
+    
+    const activePlayer = changeTurn.value
+
+     await broadcastToSession(sessionId, {
+       type: "turn_changed",
+       sessionId,
+       activePlayer,
+     } satisfies Message);
+
+    }
+
 
     await broadcastToSession(sessionId, {
       type: "score_updated",

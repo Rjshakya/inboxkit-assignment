@@ -26,45 +26,46 @@ export default function GameCanvas({ grid, userColor, onCellClick }: GameCanvasP
     canvas.height = CANVAS_HEIGHT * dpr;
     ctx.scale(dpr, dpr);
 
-    // Board background
-    ctx.fillStyle = crystalColors.boardBg;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // Board panel
+    ctx.save();
+
+    ctx.shadowColor = "rgba(0,0,0,.45)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 10;
+
+    ctx.fillStyle = "#2d2024";
+
+    ctx.beginPath();
+    ctx.roundRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 20);
+    ctx.fill();
+
+    ctx.restore();
 
     for (let row = 0; row < GRID_SIZE; row++) {
       for (let col = 0; col < GRID_SIZE; col++) {
         const cell = grid[row]?.[col];
         if (!cell) continue;
-        drawCrystalCell(ctx, row, col, cell.claimed ? cell.userColor : null);
+        drawCell(ctx, row, col, cell.claimed ? cell.userColor : null);
       }
     }
 
     // Hover highlight
     if (hoverCell) {
       const { row, col } = hoverCell;
-      const px = col * CELL_SIZE;
-      const py = row * CELL_SIZE;
+      const gap = 6;
+      const px = col * CELL_SIZE + gap / 2;
+      const py = row * CELL_SIZE + gap / 2;
+      const size = CELL_SIZE - gap;
+      const radius = size * 0.32;
       ctx.save();
       ctx.shadowColor = crystalColors.cellHighlight;
       ctx.shadowBlur = 10;
       ctx.strokeStyle = crystalColors.cellHighlight;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(px + 1, py + 1, size - 2, size - 2, radius);
+      ctx.stroke();
       ctx.restore();
-    }
-
-    // Grid lines
-    ctx.strokeStyle = crystalColors.gridLine;
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i <= GRID_SIZE; i++) {
-      const pos = i * CELL_SIZE;
-      ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, CANVAS_HEIGHT);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(CANVAS_WIDTH, pos);
-      ctx.stroke();
     }
   }, [grid, hoverCell, userColor]);
 
@@ -104,8 +105,13 @@ export default function GameCanvas({ grid, userColor, onCellClick }: GameCanvasP
 
   return (
     <div
-      className="relative  max-w-full rounded-sm overflow-hidden"
-      style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
+      className="relative max-w-full rounded-sm overflow-hidden"
+      style={{
+        aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+        // Optional: swap the flat board fill above for this diamond texture instead —
+        // cheaper than redrawing a pattern in canvas every frame.
+        // backgroundImage: "repeating-linear-gradient(45deg, #3a2a2e 0 10px, #33252a 10px 20px)",
+      }}
     >
       <canvas
         ref={canvasRef}
@@ -118,79 +124,77 @@ export default function GameCanvas({ grid, userColor, onCellClick }: GameCanvasP
   );
 }
 
-function drawCrystalCell(
+/**
+ * Lightens (positive percent) or darkens (negative percent) a 6-digit hex color.
+ * Expects "#rrggbb". Normalize userColor to hex before calling this if it can
+ * arrive as rgb(...) or a CSS color name.
+ */
+function shadeColor(hex: string, percent: number): string {
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+
+  r = Math.min(255, Math.max(0, Math.round((r * (100 + percent)) / 100)));
+  g = Math.min(255, Math.max(0, Math.round((g * (100 + percent)) / 100)));
+  b = Math.min(255, Math.max(0, Math.round((b * (100 + percent)) / 100)));
+
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function drawCell(
   ctx: CanvasRenderingContext2D,
   row: number,
   col: number,
   color: string | null,
 ) {
+  const gap = 6; // bigger gap than before — cells read as distinct blocks, no grid lines needed
   const px = col * CELL_SIZE;
   const py = row * CELL_SIZE;
 
-  // Keycap geometry
-  const gap = 3;
-  const borderWidth = 2;
-  const radius = 7;
-  const x = px + gap;
-  const y = py + gap;
-  const w = CELL_SIZE - gap * 2;
-  const h = CELL_SIZE - gap * 2;
-  const innerX = x + borderWidth;
-  const innerY = y + borderWidth;
-  const innerW = w - borderWidth * 2;
-  const innerH = h - borderWidth * 2;
-  const innerRadius = Math.max(0, radius - borderWidth);
+  const x = px + gap / 2;
+  const y = py + gap / 2;
+  const size = CELL_SIZE - gap;
+  const radius = size * 0.32; // proportional radius — squircle, not a barely-rounded square
 
   ctx.save();
 
-  // 1. Thick dark outline around the keycap
-  ctx.fillStyle = "#13131a";
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, radius);
-  ctx.fill();
+  if (!color) {
+    // ==========================================
+    // EMPTY SLOT — plain dark void
+    // ==========================================
+    ctx.fillStyle = "#1c1417";
+    ctx.beginPath();
+    ctx.roundRect(x, y, size, size, radius -10);
+    ctx.fill();
 
-  // 2. Keycap face base color
-  if (color) {
-    ctx.fillStyle = color;
-  } else {
-    const baseGrad = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH);
-    baseGrad.addColorStop(0, "#4b4b5c");
-    baseGrad.addColorStop(1, "#2c2c38");
-    ctx.fillStyle = baseGrad;
+    ctx.restore();
+    return;
   }
+
+  // ==========================================
+  // CLAIMED CELL — duotone "candy" block
+  // ==========================================
+  const lip = size * 0.16; // thickness of the dark rim peeking out at the bottom
+
+  // 1. Base/shadow layer — full cell, darker shade of the color
+  ctx.fillStyle = shadeColor(color, -38);
   ctx.beginPath();
-  ctx.roundRect(innerX, innerY, innerW, innerH, innerRadius);
+  ctx.roundRect(x, y, size, size, radius - 10);
   ctx.fill();
 
-  // 3. Soft top glossy highlight (makes the key look puffy/rounded)
-  const highlightGrad = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH * 0.6);
-  highlightGrad.addColorStop(0, "rgba(255, 255, 255, 0.55)");
-  highlightGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.18)");
-  highlightGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-  ctx.fillStyle = highlightGrad;
+  // 2. Face layer — main color, shorter, so the base layer peeks out as a lip
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.roundRect(innerX, innerY, innerW, innerH, innerRadius);
+  ctx.roundRect(x, y, size, size - lip, radius - 10);
   ctx.fill();
 
-  // 4. Bottom shadow gradient for depth
-  const bottomShadowGrad = ctx.createLinearGradient(
-    innerX,
-    innerY + innerH * 0.4,
-    innerX,
-    innerY + innerH,
-  );
-  bottomShadowGrad.addColorStop(0, "rgba(0, 0, 0, 0)");
-  bottomShadowGrad.addColorStop(0.6, "rgba(0, 0, 0, 0.25)");
-  bottomShadowGrad.addColorStop(1, "rgba(0, 0, 0, 0.45)");
-  ctx.fillStyle = bottomShadowGrad;
+  // 3. Gloss highlight on the top portion
+  const gloss = ctx.createLinearGradient(x, y, x, y + size * 0.5);
+  gloss.addColorStop(0, "rgba(255,255,255,0.5)");
+  gloss.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gloss;
   ctx.beginPath();
-  ctx.roundRect(innerX, innerY, innerW, innerH, innerRadius);
-  ctx.fill();
-
-  // 5. Thin bright specular strip at the top
-  ctx.fillStyle = "rgba(255, 255, 255, 0.32)";
-  ctx.beginPath();
-  ctx.roundRect(innerX + 2, innerY + 2, innerW - 4, innerH * 0.2, innerRadius * 0.5);
+  ctx.roundRect(x + 3, y + 3, size - 6, size * 0.4, radius - 12);
   ctx.fill();
 
   ctx.restore();

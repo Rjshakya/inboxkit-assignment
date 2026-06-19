@@ -12,7 +12,7 @@ function SessionGamePage() {
   const { sessionId } = Route.useParams();
 
   return (
-    <div className="size-full">
+    <div className="size-full bg-[#2d2024] ">
       <GameSession sessionId={sessionId} />
     </div>
   );

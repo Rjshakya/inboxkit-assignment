@@ -21,22 +21,20 @@ export default function TurnIndicator({
   isMyTurn: _isMyTurn,
   activePlayerName: _activePlayerName,
   timeLeftMs,
-  turnTotalMs,
   gameStatus,
   winnerUserId,
   currentUserId,
 }: TurnIndicatorProps) {
   const isWinner = winnerUserId === currentUserId;
-  const progress = turnTotalMs > 0 ? Math.max(0, Math.min(1, timeLeftMs / turnTotalMs)) : 0;
-
+ 
   return (
-    <Card variant="outline" className="rounded-sm">
+    <Card variant="outline" className="rounded-sm ">
       <CardHeader className="py-2">
-        <CardTitle>{isWinner ? "You Won" : "Defeated"}</CardTitle>
+        <CardTitle>{gameStatus !== "active" ? isWinner ? "You Won" : "Defeated" : _isMyTurn ? "Your turn" : "Other's turn"}</CardTitle>
       </CardHeader>
-      {gameStatus === "active" && (
+      {gameStatus === "active" && _isMyTurn &&  (
         <CardContent>
-          <Progress value={progress} />
+          <Progress value={timeLeftMs} max={15000} />
         </CardContent>
       )}
     </Card>
