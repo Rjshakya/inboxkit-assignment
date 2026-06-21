@@ -35,11 +35,11 @@ export function HowToPlaySection({ playersUrls }: HowToPlaySectionProps) {
             description="Sign in and generate a private game session with one click."
           >
             <div className="relative">
-              <div className="bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2.5 shadow-md">
+              <div className="bg-primary text-primary-foreground flex items-center gap-2 rounded-full px-4 py-2.5 shadow-md">
                 <IconDeviceGamepad2 className="size-4" />
                 <span className="text-sm font-medium">Create Game</span>
               </div>
-              <div className="absolute -bottom-1 -right-1 size-3 rounded-full bg-background ring-2 ring-primary" />
+              <div className="absolute -bottom-4 -right-3 size-3 rounded-full bg-primary ring-2 ring-primary" />
             </div>
           </StepCard>
 
@@ -74,7 +74,7 @@ export function HowToPlaySection({ playersUrls }: HowToPlaySectionProps) {
             step="03"
             icon={IconSwords}
             title="Take Turns"
-            description="Claim cells on the shared grid during your 15-second turn window."
+            description="Claim cell on the shared grid during your 15-second turn window."
           >
             <div className="space-y-3">
               <div className="grid grid-cols-8 gap-0.5">

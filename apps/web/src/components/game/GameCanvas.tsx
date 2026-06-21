@@ -33,7 +33,9 @@ export default function GameCanvas({ grid, userColor, onCellClick }: GameCanvasP
     ctx.shadowBlur = 30;
     ctx.shadowOffsetY = 10;
 
-    ctx.fillStyle = "#2d2024";
+    // ctx.fillStyle = "#2d2024";
+
+    ctx.fillStyle = "oklch(0.17 0.025 302.3)"
 
     ctx.beginPath();
     ctx.roundRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 20);
@@ -162,7 +164,9 @@ function drawCell(
     // ==========================================
     // EMPTY SLOT — plain dark void
     // ==========================================
-    ctx.fillStyle = "#1c1417";
+    // ctx.fillStyle = "#1c1417";
+    
+    ctx.fillStyle = "oklch(0.2795 0.025 302.3)"
     ctx.beginPath();
     ctx.roundRect(x, y, size, size, radius -10);
     ctx.fill();

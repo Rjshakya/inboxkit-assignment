@@ -17,7 +17,7 @@ export function Header() {
 
   return (
     <header className="w-full bg-background/80 backdrop-blur mx-auto my-2 max-w-2xl">
-      <div className="flex h-12 items-center justify-between px-4  rounded-md border">
+      <div className="flex h-12 items-center justify-between px-2  rounded-md ">
         <Link to="/" className="flex items-center gap-2">
           <Logo />
         </Link>

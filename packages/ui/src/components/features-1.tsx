@@ -114,7 +114,7 @@ export function Features({ playersUrls }: { playersUrls: string[] }) {
                 <Button
                   size={"icon"}
                   variant={"destructive"}
-                  className=" bg-destructive text-white ring-1 ring-ring shadow-2xs"
+                  className="shadow-2xs"
                 >
                   <IconLock />
                 </Button>
@@ -122,7 +122,7 @@ export function Features({ playersUrls }: { playersUrls: string[] }) {
 
               <div className="absolute size-full bg-black/20 rounded-lg  "></div>
 
-              <div className="opacity-45 grid grid-cols-2 gap-1 rounded-2xl ring-1 ring-border p-18">
+              <div className="opacity-45 grid grid-cols-2 gap-1 rounded-2xl ring-1 ring-border p-24 md:p-20">
                 {playersUrls.map((url) => {
                   return (
                     <div className="bg-foreground rounded-2xl ">
