@@ -11,21 +11,52 @@ export interface RouterAppContext {}
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Conquest — Real-Time Multiplayer Strategy Game" },
       {
-        charSet: "utf-8",
+        name: "description",
+        content:
+          "Create a room, invite friends, and outmaneuver opponents on a shared battle grid. Real-time multiplayer strategy with 15-second turns.",
       },
+
+      // Open Graph
+      { property: "og:title", content: "Conquest — Conquer the Board" },
       {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        property: "og:description",
+        content:
+          "Real-time multiplayer strategy game. Create a room, invite friends, and battle for territory on a shared grid.",
       },
+      { property: "og:image", content: "https://conquest.rajshakya.xyz/conquest-og.webp" },
+      { property: "og:url", content: "https://conquest.rajshakya.xyz" },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Conquest" },
+
+      // Twitter Card
+      { name: "twitter:card", content: "summary_large_image" },
+      // { name: "twitter:title", content: "Conquest — Conquer the Board" },
       {
-        title: "Conquest — Real-Time Grid Strategy",
+        name: "twitter:description",
+        content:
+          "Real-time multiplayer strategy game. Create a room, invite friends, and battle for territory on a shared grid.",
+      },
+      { name: "twitter:image", content: "https://conquest.rajshakya.xyz/conquest-og.webp" },
+
+      // Keywords (optional — low SEO value today, but harmless)
+      {
+        name: "keywords",
+        content:
+          "multiplayer strategy game, real-time grid game, online board game, territory control game, browser multiplayer game",
       },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        href: "/icon.png",
       },
     ],
   }),

@@ -14,5 +14,10 @@
       "custom_domain": true,
       "pattern": "inboxkit.rajshakya.xyz",
     },
+    {
+      "zone_name": "rajshakya.xyz",
+      "custom_domain": true,
+      "pattern": "conquest.rajshakya.xyz",
+    },   
   ],
 }

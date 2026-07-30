@@ -36,7 +36,7 @@ const app = new Hono<{
   .use(
     "/api/*",
     cors({
-      origin: env.CORS_ORIGIN,
+      origin: [env.CORS_ORIGIN , "https://conquest.rajshakya.xyz"],
       allowMethods: ["GET", "POST", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
       credentials: true,
